@@ -1,0 +1,35 @@
+/** Shared tunables for the Phase 0 vertical slice. */
+export const GAME = {
+  brand: 'FRONTLINE',
+  player: {
+    eyeHeight: 1.65,
+    crouchEyeHeight: 1.05,
+    radius: 0.35,
+    walkSpeed: 5.2,
+    sprintSpeed: 7.4,
+    crouchSpeed: 2.6,
+    jumpSpeed: 6.8,
+    gravity: 22,
+    mouseSensitivity: 0.0022,
+    touchLookSensitivity: 0.0034,
+    gamepadLookSensitivity: 2.4,
+  },
+  weapon: {
+    name: 'M4A1',
+    damage: 28,
+    rpm: 750,
+    magSize: 30,
+    reserve: 90,
+    reloadSeconds: 2.1,
+    bloomHip: 0.018,
+    bloomAds: 0.005,
+    recoilPitch: 0.012,
+    recoilYaw: 0.004,
+    adsFov: 55,
+    hipFov: 75,
+  },
+  combat: {
+    maxHealth: 100,
+    rangeTargetHealth: 100,
+  },
+} as const
