@@ -27,8 +27,8 @@ function box(
   const geo = new THREE.BoxGeometry(w, h, d)
   const mat = new THREE.MeshStandardMaterial({
     color,
-    roughness: 0.85,
-    metalness: 0.12,
+    roughness: 0.78,
+    metalness: 0.08,
   })
   const mesh = new THREE.Mesh(geo, mat)
   mesh.position.set(x, y, z)
@@ -50,9 +50,9 @@ export function buildWarehouseMap(): BuiltMap {
   const colliders: Collider[] = []
 
   const floorMat = new THREE.MeshStandardMaterial({
-    color: 0x2a2f33,
-    roughness: 0.95,
-    metalness: 0.05,
+    color: 0x5a6168,
+    roughness: 0.92,
+    metalness: 0.04,
   })
   const floor = new THREE.Mesh(new THREE.BoxGeometry(48, 0.4, 36), floorMat)
   floor.position.set(0, -0.2, 0)
@@ -60,45 +60,46 @@ export function buildWarehouseMap(): BuiltMap {
   group.add(floor)
 
   // Outer walls
-  box(group, colliders, 48, 8, 0.6, 0, 4, -18, 0x3a4148)
-  box(group, colliders, 48, 8, 0.6, 0, 4, 18, 0x3a4148)
-  box(group, colliders, 0.6, 8, 36, -24, 4, 0, 0x3a4148)
-  box(group, colliders, 0.6, 8, 36, 24, 4, 0, 0x3a4148)
+  box(group, colliders, 48, 8, 0.6, 0, 4, -18, 0x6d7680)
+  box(group, colliders, 48, 8, 0.6, 0, 4, 18, 0x6d7680)
+  box(group, colliders, 0.6, 8, 36, -24, 4, 0, 0x6d7680)
+  box(group, colliders, 0.6, 8, 36, 24, 4, 0, 0x6d7680)
 
   // Shipping containers (cover + vertical play)
-  const steel = 0x4b5a4e
-  const rust = 0x6a4a3a
+  const steel = 0x6f8a74
   box(group, colliders, 6, 2.6, 2.4, -10, 1.3, -6, steel)
-  box(group, colliders, 6, 2.6, 2.4, -10, 3.9, -6, rust)
+  box(group, colliders, 6, 2.6, 2.4, -10, 3.9, -6, 0x9a6a52)
   box(group, colliders, 6, 2.6, 2.4, 8, 1.3, 4, steel)
-  box(group, colliders, 4, 2.6, 2.4, 12, 1.3, -8, rust)
-  box(group, colliders, 3, 1.4, 3, 0, 0.7, 0, 0x555b61)
+  box(group, colliders, 4, 2.6, 2.4, 12, 1.3, -8, 0x9a6a52)
+  box(group, colliders, 3, 1.4, 3, 0, 0.7, 0, 0x7a828a)
 
   // Stairs up to catwalk (step boxes)
   for (let i = 0; i < 8; i++) {
     const y = 0.25 + i * 0.35
     const z = 10 - i * 0.55
-    box(group, colliders, 2.2, 0.35, 0.7, -18, y, z, 0x5c636b)
+    box(group, colliders, 2.2, 0.35, 0.7, -18, y, z, 0x8a939c)
   }
 
   // Catwalk platform + rail stubs
-  box(group, colliders, 20, 0.3, 4, -8, 3.1, 6, 0x6d757e)
-  box(group, colliders, 0.15, 1.1, 4, 2, 3.8, 6, 0x8a939c)
-  box(group, colliders, 0.15, 1.1, 4, -18, 3.8, 6, 0x8a939c)
+  box(group, colliders, 20, 0.3, 4, -8, 3.1, 6, 0x9aa3ac)
+  box(group, colliders, 0.15, 1.1, 4, 2, 3.8, 6, 0xb0b8c0)
+  box(group, colliders, 0.15, 1.1, 4, -18, 3.8, 6, 0xb0b8c0)
 
   // Center crate lane
-  box(group, colliders, 1.6, 1.2, 1.6, 4, 0.6, -3, 0x7a6a4e)
-  box(group, colliders, 1.6, 1.2, 1.6, -3, 0.6, 7, 0x7a6a4e)
-  box(group, colliders, 1.6, 1.2, 1.6, 14, 0.6, 10, 0x7a6a4e)
+  box(group, colliders, 1.6, 1.2, 1.6, 4, 0.6, -3, 0xa89060)
+  box(group, colliders, 1.6, 1.2, 1.6, -3, 0.6, 7, 0xa89060)
+  box(group, colliders, 1.6, 1.2, 1.6, 14, 0.6, 10, 0xa89060)
 
   // Soft ambient props (no collision)
-  box(group, colliders, 0.4, 3.5, 0.4, -20, 1.75, -14, 0x2f353b, false)
-  box(group, colliders, 0.4, 3.5, 0.4, 20, 1.75, 14, 0x2f353b, false)
+  box(group, colliders, 0.4, 3.5, 0.4, -20, 1.75, -14, 0x4a525a, false)
+  box(group, colliders, 0.4, 3.5, 0.4, 20, 1.75, 14, 0x4a525a, false)
 
-  const hemi = new THREE.HemisphereLight(0xb7c4d0, 0x1a1c1e, 0.75)
+  const ambient = new THREE.AmbientLight(0xd5dde6, 0.85)
+  group.add(ambient)
+  const hemi = new THREE.HemisphereLight(0xe8eef5, 0x4a5056, 1.1)
   group.add(hemi)
-  const sun = new THREE.DirectionalLight(0xf0e6d4, 1.15)
-  sun.position.set(12, 22, 8)
+  const sun = new THREE.DirectionalLight(0xfff2dd, 1.6)
+  sun.position.set(14, 26, 10)
   sun.castShadow = true
   sun.shadow.mapSize.set(1024, 1024)
   sun.shadow.camera.near = 2
@@ -108,10 +109,13 @@ export function buildWarehouseMap(): BuiltMap {
   sun.shadow.camera.top = 30
   sun.shadow.camera.bottom = -30
   group.add(sun)
+  const fill = new THREE.DirectionalLight(0xb8c8e0, 0.55)
+  fill.position.set(-18, 12, -10)
+  group.add(fill)
 
   const spawns = [
-    new THREE.Vector3(-16, 0, -12),
-    new THREE.Vector3(16, 0, 12),
+    new THREE.Vector3(-14, 0, -10),
+    new THREE.Vector3(14, 0, 10),
   ]
 
   const targetAnchors = [

@@ -34,7 +34,8 @@ export class Game {
   private muzzleTimer = 0
   private running = false
   private kills = 0
-  private spawnPoint = new THREE.Vector3(-16, 0, -12)
+  private spawnPoint = new THREE.Vector3(-14, 0, -10)
+  private spawnYaw = Math.atan2(-14, -10)
 
   constructor(host: HTMLElement) {
     this.host = host
@@ -52,12 +53,14 @@ export class Game {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    this.renderer.shadowMap.type = THREE.PCFShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = 1.25
     this.host.prepend(this.renderer.domElement)
 
-    this.scene.background = new THREE.Color(0x0d1216)
-    this.scene.fog = new THREE.Fog(0x0d1216, 28, 70)
+    this.scene.background = new THREE.Color(0x1a222a)
+    this.scene.fog = new THREE.Fog(0x1a222a, 40, 90)
     this.scene.add(this.tracerGroup)
 
     this.muzzle = createMuzzleFlash()
@@ -100,7 +103,7 @@ export class Game {
       this.hitables.push(...t.hitMeshes)
     }
 
-    this.player.spawn(this.spawnPoint, Math.PI * 0.25)
+    this.player.spawn(this.spawnPoint, this.spawnYaw)
   }
 
   private handleMenu(action: MenuAction): void {
@@ -127,7 +130,7 @@ export class Game {
     this.hud.setMode('RANGE')
     this.weapon.reset()
     this.kills = 0
-    this.player.spawn(this.spawnPoint, Math.PI * 0.25)
+    this.player.spawn(this.spawnPoint, this.spawnYaw)
     this.hud.setHealth(this.player.health)
     this.hud.pushFeed('Range live — clear the plates')
   }

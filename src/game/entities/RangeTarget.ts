@@ -28,13 +28,15 @@ export class RangeTarget {
     stand.castShadow = true
     this.group.add(stand)
 
-    this.baseColor = new THREE.Color(0xb85c38)
+    this.baseColor = new THREE.Color(0xff7a3c)
     this.plate = new THREE.Mesh(
       new THREE.BoxGeometry(0.7, 1.1, 0.12),
       new THREE.MeshStandardMaterial({
         color: this.baseColor.clone(),
-        metalness: 0.35,
-        roughness: 0.45,
+        emissive: new THREE.Color(0x4a1808),
+        emissiveIntensity: 0.55,
+        metalness: 0.25,
+        roughness: 0.4,
       }),
     )
     this.plate.position.y = 1.55
