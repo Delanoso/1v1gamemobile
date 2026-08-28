@@ -8,7 +8,7 @@ function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContex
 }
 
 /** Dark industrial asphalt with aggregate, stains, and worn lane markings. */
-export function asphaltColorMap(options?: { laneMarkings?: boolean }): THREE.CanvasTexture {
+export function asphaltColorMap(options?: { laneMarkings?: boolean; surfaceBands?: boolean }): THREE.CanvasTexture {
   const [c, ctx] = canvas(1024, 1024)
   ctx.fillStyle = '#2b2e32'
   ctx.fillRect(0, 0, 1024, 1024)
@@ -20,12 +20,14 @@ export function asphaltColorMap(options?: { laneMarkings?: boolean }): THREE.Can
     ctx.fillRect(Math.random() * 1024, Math.random() * 1024, 1 + Math.random() * 2, 1 + Math.random() * 2)
   }
 
-  // Subtle roller compaction bands
-  for (let y = 0; y < 1024; y += 48) {
-    ctx.fillStyle = 'rgba(255,255,255,0.015)'
-    ctx.fillRect(0, y, 1024, 10)
-    ctx.fillStyle = 'rgba(0,0,0,0.02)'
-    ctx.fillRect(0, y + 12, 1024, 8)
+  // Subtle roller compaction bands (Asset Lab only — reads as false walls on the map)
+  if (options?.surfaceBands !== false) {
+    for (let y = 0; y < 1024; y += 48) {
+      ctx.fillStyle = 'rgba(255,255,255,0.015)'
+      ctx.fillRect(0, y, 1024, 10)
+      ctx.fillStyle = 'rgba(0,0,0,0.02)'
+      ctx.fillRect(0, y + 12, 1024, 8)
+    }
   }
 
   // Oil / diesel stains

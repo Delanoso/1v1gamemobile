@@ -3,7 +3,7 @@ import { GAME } from '../../config/gameConfig'
 import type { FrameInput } from '../input/InputManager'
 import {
   groundHeightAt,
-  resolveCapsuleColliders,
+  resolveCapsuleCollidersRepeated,
   type Collider,
 } from '../maps/collision'
 
@@ -45,9 +45,13 @@ export class PlayerController {
     this.bobPhase = 0
     this.cameraKick = 0
     if (colliders?.length) {
-      for (let i = 0; i < 4; i++) {
-        resolveCapsuleColliders(this.position, GAME.player.radius, GAME.player.eyeHeight, colliders)
-      }
+      resolveCapsuleCollidersRepeated(
+        this.position,
+        GAME.player.radius,
+        GAME.player.eyeHeight,
+        colliders,
+        8,
+      )
     }
     this.syncCamera()
   }
@@ -100,12 +104,16 @@ export class PlayerController {
     this.planarVel.x = THREE.MathUtils.lerp(this.planarVel.x, wish.x, Math.min(1, accel * dt))
     this.planarVel.y = THREE.MathUtils.lerp(this.planarVel.y, wish.y, Math.min(1, accel * dt))
 
-    this.position.x += this.planarVel.x * dt
-    this.position.z += this.planarVel.y * dt
-    this.moveSpeed = Math.hypot(this.planarVel.x, this.planarVel.y)
-
     const eye = this.crouching ? p.crouchEyeHeight : p.eyeHeight
-    resolveCapsuleColliders(this.position, p.radius, eye, colliders)
+    const dx = this.planarVel.x * dt
+    const dz = this.planarVel.y * dt
+
+    this.position.x += dx
+    resolveCapsuleCollidersRepeated(this.position, p.radius, eye, colliders, 6)
+    this.position.z += dz
+    resolveCapsuleCollidersRepeated(this.position, p.radius, eye, colliders, 6)
+
+    this.moveSpeed = Math.hypot(this.planarVel.x, this.planarVel.y)
 
     const ground = groundHeightAt(this.position.x, this.position.z, colliders, this.position.y)
 

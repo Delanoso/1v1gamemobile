@@ -12,7 +12,7 @@ import type { ContainerColor } from '../materials/MapMaterials'
 import type { Collider } from './collision'
 
 export type { Collider } from './collision'
-export { resolveCapsuleColliders, groundHeightAt } from './collision'
+export { resolveCapsuleColliders, resolveCapsuleCollidersRepeated, groundHeightAt } from './collision'
 
 export interface BuiltMap {
   group: THREE.Group
@@ -25,9 +25,8 @@ const CH = CONTAINER_DIMS.height
 const CW = CONTAINER_DIMS.width
 const CL = CONTAINER_DIMS.length
 /** Pull container hitboxes inward so alley gaps match what players see. */
-const CONTAINER_COLLIDER_INSET = 0.18
+const CONTAINER_COLLIDER_INSET = 0.28
 
-const _bounds = new THREE.Box3()
 const containerProtos = new Map<ContainerVariant, THREE.Object3D>()
 let fenceProto: THREE.Object3D | null = null
 
@@ -65,28 +64,6 @@ function pushContainerCollider(
     y,
     z,
   )
-}
-
-function pushColliderFromObject(colliders: Collider[], obj: THREE.Object3D): void {
-  obj.updateMatrixWorld(true)
-  _bounds.setFromObject(obj)
-  colliders.push({ min: _bounds.min.clone(), max: _bounds.max.clone() })
-}
-
-function placeObject(
-  group: THREE.Group,
-  colliders: Collider[],
-  obj: THREE.Object3D,
-  x: number,
-  y: number,
-  z: number,
-  rotY = 0,
-  collider = true,
-): void {
-  obj.position.set(x, y, z)
-  obj.rotation.y = rotY
-  group.add(obj)
-  if (collider) pushColliderFromObject(colliders, obj)
 }
 
 function cloneContainer(color: ContainerColor): THREE.Object3D {
@@ -166,7 +143,7 @@ function addAngledContainer(
   container.position.set(x, CH / 2, z)
   container.rotation.y = angle
   group.add(container)
-  const r = Math.max(CL, CW) * 0.55
+  const r = CL * 0.38
   pushContainerCollider(colliders, r * 2, CH, r * 2, x, CH / 2, z)
 }
 
@@ -175,7 +152,9 @@ function addBarrelCluster(group: THREE.Group, colliders: Collider[], x: number, 
   cluster.traverse((o) => {
     if (o instanceof THREE.Mesh && o.geometry.type !== 'CylinderGeometry') o.castShadow = false
   })
-  placeObject(group, colliders, cluster, x, 0, z)
+  cluster.position.set(x, 0, z)
+  group.add(cluster)
+  pushCollider(colliders, 1.35, 1.05, 1.35, x, 0.52, z)
 }
 
 function addCratePair(group: THREE.Group, colliders: Collider[], x: number, z: number, rotY = 0): void {
@@ -188,7 +167,10 @@ function addCratePair(group: THREE.Group, colliders: Collider[], x: number, z: n
   wrapper.traverse((o) => {
     if (o instanceof THREE.Mesh) o.castShadow = false
   })
-  placeObject(group, colliders, wrapper, x, 0, z, rotY)
+  wrapper.position.set(x, 0, z)
+  wrapper.rotation.y = rotY
+  group.add(wrapper)
+  pushCollider(colliders, 1.55, 1.05, 1.25, x, 0.52, z)
 }
 
 /** MW Shipment-inspired container yard — lab assets integrated (game-optimized). */
@@ -225,7 +207,6 @@ export function buildContainerYardMap(): BuiltMap {
   ]
   for (const q of quad) {
     addContainer(group, colliders, q.x, q.z, 'x', q.c, 2)
-    addContainer(group, colliders, q.x + (q.x > 0 ? -3.2 : 3.2), q.z, 'z', q.c)
   }
 
   addContainer(group, colliders, 0, -5, 'z', 'red')
@@ -239,14 +220,14 @@ export function buildContainerYardMap(): BuiltMap {
   addAngledContainer(group, colliders, -14, 9, 'tan', -Math.PI / 4)
 
   const tunnel = cloneContainer('blue')
-  tunnel.position.set(-3, CH / 2, 9)
+  tunnel.position.set(-10, CH / 2, 11)
   group.add(tunnel)
-  pushContainerCollider(colliders, CL, CH, CW, -3, CH / 2, 9)
+  pushContainerCollider(colliders, CL, CH, CW, -10, CH / 2, 11)
   const tunnelDark = new THREE.Mesh(
     new THREE.BoxGeometry(CL * 0.85, CH * 0.8, CW * 0.85),
     new THREE.MeshStandardMaterial({ color: 0x0a0c10, roughness: 1 }),
   )
-  tunnelDark.position.set(-3, CH / 2, 9)
+  tunnelDark.position.set(-10, CH / 2, 11)
   group.add(tunnelDark)
 
   addBarrelCluster(group, colliders, 16, -11)

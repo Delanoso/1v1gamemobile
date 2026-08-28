@@ -43,6 +43,17 @@ export function resolveCapsuleColliders(
   }
 }
 
+/** Run several passes so corners and overlapping pushes settle correctly. */
+export function resolveCapsuleCollidersRepeated(
+  pos: THREE.Vector3,
+  radius: number,
+  height: number,
+  colliders: Collider[],
+  passes = 6,
+): void {
+  for (let i = 0; i < passes; i++) resolveCapsuleColliders(pos, radius, height, colliders)
+}
+
 export function groundHeightAt(
   x: number,
   z: number,
