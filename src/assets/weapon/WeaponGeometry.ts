@@ -27,10 +27,9 @@ export function barrelZ(
   return m
 }
 
-/** Torus ring perpendicular to Z. */
+/** Torus ring around the barrel (Z axis). Default torus lies in XY plane. */
 export function ringZ(radius: number, tube: number, mat: PartMat, z: number, y = 0): THREE.Mesh {
   const m = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 6, 16), mat)
-  m.rotation.y = Math.PI / 2
   m.position.set(0, y, z)
   return m
 }
@@ -64,9 +63,9 @@ export function extrudeYZ(
   for (let i = 1; i < profile.length; i++) shape.lineTo(profile[i][0], profile[i][1])
   shape.closePath()
   const geo = new THREE.ExtrudeGeometry(shape, { depth: width, bevelEnabled: false, curveSegments: 10 })
+  geo.translate(0, 0, -width / 2)
   const mesh = new THREE.Mesh(geo, mat)
   mesh.rotation.y = Math.PI / 2
-  mesh.position.x = -width / 2
   return mesh
 }
 
@@ -191,11 +190,10 @@ export function ribbedSuppressor(
   add(barrelZ(radius * 0.92, radius, heatLen, 14, mats.heat, z - length / 2 + heatLen / 2, y))
 }
 
-/** Horizontal pump grooves as torus rings. */
+/** Horizontal pump grooves as torus rings around the Z axis. */
 export function pumpGrooves(add: AddPart, count: number, z0: number, pitch: number, mat: PartMat, y = -0.015): void {
   for (let i = 0; i < count; i++) {
     const g = new THREE.Mesh(new THREE.TorusGeometry(0.044, 0.003, 4, 18), mat)
-    g.rotation.y = Math.PI / 2
     g.position.set(0, y, z0 - i * pitch)
     add(g)
   }

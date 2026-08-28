@@ -387,7 +387,7 @@ export class LabApp {
         result.source === 'glb'
           ? `Using imported ${variantNames[this.weaponVariant]} GLB.`
           : this.weaponVariant === 'shotgun'
-            ? 'Procedural v3 — extruded stock comb + pump wrap. Drop shotgun.glb for studio quality.'
+            ? 'Procedural v4 — extruded stock, vent rib, integrated pump. Drop shotgun.glb for studio quality.'
             : `Procedural blockout — drop GLB at public/assets/weapons/ for reference quality.`
     }
   }
