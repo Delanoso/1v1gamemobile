@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { StudioScene } from './StudioScene'
 import { buildContainer } from '../assets/container/ContainerAsset'
 import { buildFloor } from '../assets/floor/FloorAsset'
+import { buildFence } from '../assets/fence/FenceAsset'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
 export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel'
@@ -14,11 +15,12 @@ const ASSET_LABELS: Record<LabAsset, string> = {
   barrel: 'Barrel',
 }
 
-const ENABLED_ASSETS: LabAsset[] = ['container', 'floor']
+const ENABLED_ASSETS: LabAsset[] = ['container', 'floor', 'fence']
 
 const GLB_HINTS: Partial<Record<LabAsset, string>> = {
   container: 'public/assets/maps/container-yard/container.glb',
   floor: 'public/assets/maps/container-yard/floor.glb',
+  fence: 'public/assets/maps/container-yard/fence.glb',
 }
 
 export class LabApp {
@@ -28,7 +30,7 @@ export class LabApp {
   private readonly trisEl: HTMLElement
   private readonly sourceEl: HTMLElement
   private readonly hintEl: HTMLElement
-  private asset: LabAsset = 'floor'
+  private asset: LabAsset = 'fence'
   private containerColor: ContainerColor = 'red'
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
@@ -41,7 +43,7 @@ export class LabApp {
     this.panel.className = 'lab-panel'
     this.panel.innerHTML = `
       <p class="lab-eyebrow">ASSET LAB</p>
-      <h1 id="lab-title">Asphalt Floor</h1>
+      <h1 id="lab-title">Chain-link Fence</h1>
       <p class="lab-sub">Polish one asset to 100% before it goes in the game.</p>
       <div class="lab-tabs" id="lab-tabs"></div>
       <div class="lab-meta">
@@ -161,7 +163,19 @@ export class LabApp {
       return
     }
 
-    this.statusEl.textContent = `${ASSET_LABELS[this.asset]} lab opens after floor is approved.`
+    if (this.asset === 'fence') {
+      const result = await buildFence()
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? 'Using imported fence GLB — check mesh transparency and post alignment.'
+          : 'Procedural v1 — galvanized posts, rails, chain-link bays, tension wire, barb coils.'
+      return
+    }
+
+    this.statusEl.textContent = `${ASSET_LABELS[this.asset]} lab opens after fence is approved.`
   }
 
   private loop = (): void => {

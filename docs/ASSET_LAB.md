@@ -42,9 +42,9 @@ Reload in the lab — it switches from procedural to GLB automatically.
 | # | Asset | Status |
 |---|-------|--------|
 | 1 | Shipping container | Done — review anytime |
-| 2 | Asphalt floor | **Active in lab** |
-| 3 | Chain-link fence | Next |
-| 4 | Barrel / pallet | Planned |
+| 2 | Asphalt floor | Done — review anytime |
+| 3 | Chain-link fence | **Active in lab** |
+| 4 | Barrel / pallet | Next |
 | 5 | Full map assembly | After props |
 
 ## Approval checklist (container)
@@ -63,4 +63,12 @@ Reload in the lab — it switches from procedural to GLB automatically.
 - [ ] Cracks / stains feel natural, not repetitive
 - [ ] Performance OK on iPad
 
-When you say **"floor approved"**, we lock it and start the fence lab.
+## Approval checklist (fence)
+
+- [ ] Chain-link weave reads at gameplay distance
+- [ ] Posts/rails feel galvanized steel, not flat grey
+- [ ] Transparency doesn't z-fight or disappear at angles
+- [ ] Height/proportions match container yard perimeter
+- [ ] Performance OK on iPad
+
+When you say **"fence approved"**, we lock it and start the barrel lab.
