@@ -16,7 +16,7 @@ export const CONTAINER_DIMS = { length: 6, width: 2.4, height: 2.6 } as const
 const GLB_PATH = '/assets/maps/container-yard/container.glb'
 
 const PAINT: Record<string, { base: string; accent: string }> = {
-  red: { base: '#6e2228', accent: '#8a3038' },
+  red: { base: '#7a2830', accent: '#963840' },
   blue: { base: '#243a58', accent: '#345070' },
   green: { base: '#2d5a38', accent: '#3d6e48' },
   tan: { base: '#7a6a52', accent: '#94846a' },
@@ -60,9 +60,9 @@ function bodyMat(color: ContainerVariant): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     map,
     normalMap: normal,
-    normalScale: new THREE.Vector2(0.55, 0.55),
-    metalness: 0.22,
-    roughness: 0.78,
+    normalScale: new THREE.Vector2(0.18, 0.18),
+    metalness: 0.28,
+    roughness: 0.72,
   })
 }
 

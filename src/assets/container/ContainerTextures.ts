@@ -90,41 +90,53 @@ export function hazardStripeTexture(): THREE.CanvasTexture {
   return tex
 }
 
+/** Smooth painted metal — subtle weathering, no black stripe gaps. */
 export function weatheredPaintTexture(base: string, accent: string): THREE.CanvasTexture {
   const [c, ctx] = canvas(512, 512)
   ctx.fillStyle = base
   ctx.fillRect(0, 0, 512, 512)
-  for (let y = 0; y < 512; y += 14) {
-    const shade = y % 28 === 0 ? accent : base
-    ctx.fillStyle = shade
-    ctx.fillRect(0, y, 512, 7)
-    ctx.fillStyle = 'rgba(0,0,0,0.14)'
-    ctx.fillRect(0, y + 7, 512, 7)
+
+  // Very subtle vertical corrugation in albedo (shading only, never black gaps)
+  for (let x = 0; x < 512; x += 18) {
+    const lit = x % 36 === 0
+    ctx.fillStyle = lit ? accent : base
+    ctx.globalAlpha = 0.22
+    ctx.fillRect(x, 0, 9, 512)
+    ctx.globalAlpha = 1
   }
-  // Edge highlight wash (dry-brush effect)
-  ctx.fillStyle = 'rgba(255,255,255,0.06)'
-  for (let i = 0; i < 40; i++) {
-    ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 30 + Math.random() * 80)
+
+  // Fine grain + scuffs
+  for (let i = 0; i < 5000; i++) {
+    const g = 80 + Math.random() * 40
+    ctx.fillStyle = `rgba(${g},${g * 0.9},${g * 0.85},0.04)`
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 2, 1 + Math.random() * 2)
   }
-  ctx.fillStyle = 'rgba(0,0,0,0.08)'
-  for (let i = 0; i < 25; i++) {
-    ctx.fillRect(Math.random() * 512, Math.random() * 512, 60, 4)
+  ctx.fillStyle = 'rgba(255,255,255,0.035)'
+  for (let i = 0; i < 35; i++) {
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 24 + Math.random() * 70)
   }
+  // Rust streaks at edges
+  for (let i = 0; i < 10; i++) {
+    ctx.fillStyle = `rgba(110,65,35,${0.04 + Math.random() * 0.07})`
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 30 + Math.random() * 90, 2 + Math.random() * 5)
+  }
+
   const tex = new THREE.CanvasTexture(c)
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
   tex.colorSpace = THREE.SRGBColorSpace
   return tex
 }
 
+/** Gentle corrugated normal — reads as surface detail, not separate slats. */
 export function corrugatedNormalMap(): THREE.CanvasTexture {
   const [c, ctx] = canvas(256, 256)
   const img = ctx.createImageData(256, 256)
   for (let y = 0; y < 256; y++) {
     for (let x = 0; x < 256; x++) {
-      const ridge = Math.sin((y / 256) * Math.PI * 32) * 0.5 + 0.5
+      const ridge = Math.sin((x / 256) * Math.PI * 24) * 0.5 + 0.5
       const i = (y * 256 + x) * 4
-      img.data[i] = 128 + ridge * 45
-      img.data[i + 1] = 128 + ridge * 18
+      img.data[i] = 128 + ridge * 22
+      img.data[i + 1] = 128 + ridge * 10
       img.data[i + 2] = 255
       img.data[i + 3] = 255
     }

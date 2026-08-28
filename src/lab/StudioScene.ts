@@ -42,16 +42,16 @@ export class StudioScene {
     this.scene.add(this.pivot)
 
     // Studio lights
-    this.scene.add(new THREE.AmbientLight(0x8898a8, 0.45))
-    const key = new THREE.DirectionalLight(0xfff0e0, 1.35)
+    this.scene.add(new THREE.AmbientLight(0xa0b0c0, 0.65))
+    const key = new THREE.DirectionalLight(0xfff4e8, 1.65)
     key.position.set(6, 10, 8)
     key.castShadow = true
     key.shadow.mapSize.set(1024, 1024)
     this.scene.add(key)
-    const fill = new THREE.DirectionalLight(0xa0b8d8, 0.55)
+    const fill = new THREE.DirectionalLight(0xb8c8e8, 0.85)
     fill.position.set(-8, 5, -4)
     this.scene.add(fill)
-    const rim = new THREE.DirectionalLight(0xffffff, 0.35)
+    const rim = new THREE.DirectionalLight(0xffffff, 0.55)
     rim.position.set(0, 4, -10)
     this.scene.add(rim)
 
