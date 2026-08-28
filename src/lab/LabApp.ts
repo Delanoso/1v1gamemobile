@@ -6,9 +6,10 @@ import { buildFloor } from '../assets/floor/FloorAsset'
 import { buildFence } from '../assets/fence/FenceAsset'
 import { buildBarrel, type BarrelVariant } from '../assets/barrel/BarrelAsset'
 import { buildCrate, type CrateVariant } from '../assets/crate/CrateAsset'
+import { buildPallet, type PalletVariant } from '../assets/pallet/PalletAsset'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
-export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate'
+export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate' | 'pallet'
 
 const ASSET_LABELS: Record<LabAsset, string> = {
   container: 'Shipping Container',
@@ -16,6 +17,7 @@ const ASSET_LABELS: Record<LabAsset, string> = {
   fence: 'Chain-link Fence',
   barrel: 'Barrel',
   crate: 'Crate',
+  pallet: 'Pallet',
 }
 
 const GLB_HINTS: Partial<Record<LabAsset, string>> = {
@@ -26,6 +28,8 @@ const GLB_HINTS: Partial<Record<LabAsset, string>> = {
     'public/assets/maps/container-yard/barrel-metal.glb · barrel-hazard-green.glb · barrel-hazard-yellow.glb · barrel-wood.glb',
   crate:
     'public/assets/maps/container-yard/crate-small.glb · crate-medium.glb · crate-large.glb · crate-long.glb · crate-flat.glb',
+  pallet:
+    'public/assets/maps/container-yard/pallet-standard.glb · pallet-double.glb · pallet-plastic.glb',
 }
 
 export class LabApp {
@@ -35,10 +39,11 @@ export class LabApp {
   private readonly trisEl: HTMLElement
   private readonly sourceEl: HTMLElement
   private readonly hintEl: HTMLElement
-  private asset: LabAsset = 'crate'
+  private asset: LabAsset = 'pallet'
   private containerColor: ContainerColor = 'red'
   private barrelVariant: BarrelVariant = 'metal-dark'
   private crateVariant: CrateVariant = 'medium'
+  private palletVariant: PalletVariant = 'standard'
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
@@ -185,6 +190,33 @@ export class LabApp {
       })
       this.panel.querySelector('.lab-actions')!.before(row)
       this.colorRow = row
+      return
+    }
+
+    if (this.asset === 'pallet') {
+      const row = document.createElement('div')
+      row.className = 'lab-colors lab-colors-wrap'
+      const variants: PalletVariant[] = ['standard', 'double', 'plastic']
+      const labels: Record<PalletVariant, string> = {
+        standard: 'Wood',
+        double: 'Stacked',
+        plastic: 'Plastic',
+      }
+      variants.forEach((v) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = labels[v]
+        b.className = `swatch swatch-pallet-${v}${v === this.palletVariant ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.palletVariant = v
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
+      })
+      this.panel.querySelector('.lab-actions')!.before(row)
+      this.colorRow = row
     }
   }
 
@@ -282,6 +314,27 @@ export class LabApp {
           ? `Using imported ${variantNames[this.crateVariant]} crate GLB.`
           : `Procedural v3 — brown wood ${variantLabels[this.crateVariant]}.`
       return
+    }
+
+    if (this.asset === 'pallet') {
+      const result = await buildPallet(this.palletVariant)
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      const variantLabels: Record<PalletVariant, string> = {
+        standard: 'EUR-style wood pallet with deck boards, runners, and nail heads',
+        double: 'two weathered wood pallets stacked with a slight offset',
+        plastic: 'blue industrial plastic pallet with lattice ribs',
+      }
+      const variantNames: Record<PalletVariant, string> = {
+        standard: 'Wood',
+        double: 'Stacked',
+        plastic: 'Plastic',
+      }
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? `Using imported ${variantNames[this.palletVariant]} pallet GLB.`
+          : `Procedural v1 — ${variantLabels[this.palletVariant]}.`
     }
   }
 

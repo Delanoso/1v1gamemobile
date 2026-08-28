@@ -24,7 +24,7 @@ Or locally: `http://localhost:5173/lab.html`
 2. Iterate until it matches your reference (100%)
 3. Export approved asset (GLB) or approve procedural version
 4. Asset is used automatically in Container Yard map
-5. Move to next tab: Floor → Fence → Barrel → …
+5. Move to next tab: Floor → Fence → Barrel → Crate → Pallet → …
 ```
 
 ## Drop a Tripo/Meshy model
@@ -46,7 +46,8 @@ Reload in the lab — it switches from procedural to GLB automatically.
 | 3 | Chain-link fence | Done — review anytime |
 | 4 | Barrel | Done — review anytime |
 | 5 | Crate | Done — review anytime |
-| 6 | Full map assembly | **In progress** |
+| 6 | Pallet | **In progress** |
+| 7 | Full map assembly | In progress |
 
 ## Approval checklist (container)
 
@@ -91,6 +92,16 @@ When you say **"barrel approved"**, we integrate all lab assets into the contain
 
 When you say **"crate approved"**, we add crates to the container yard map scatter.
 
+## Approval checklist (pallet)
+
+- [ ] Wood deck boards read weathered — not flat orange
+- [ ] Runner/stringer proportions feel like a real EUR pallet
+- [ ] Stacked variant sits naturally (slight offset, not perfect stack)
+- [ ] Plastic variant reads industrial blue at gameplay distance
+- [ ] Performance OK on iPad
+
+When you say **"pallet approved"**, we scatter pallets into the container yard map.
+
 ## Map integration status
 
 The container yard map (`ContainerYardMap.ts`) now uses lab procedural assets:
@@ -105,5 +116,5 @@ Still placeholder / to build later:
 
 - [ ] Crane backdrop (simple silhouettes — upgrade or GLB)
 - [ ] Tarp / cover props as lab assets
-- [ ] Additional yard dressing (pallets, cones, tires, etc.)
+- [ ] Additional yard dressing (cones, tires, etc.)
 - [ ] GLB swap path when Tripo models are dropped in
