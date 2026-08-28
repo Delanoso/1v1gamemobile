@@ -61,6 +61,44 @@ function addYBracket(x: number, y: number, steel: THREE.MeshStandardMaterial, ad
   }
 }
 
+function addCoilBarbs(
+  cx: number,
+  cy: number,
+  cz: number,
+  coilR: number,
+  steel: THREE.MeshStandardMaterial,
+  addMesh: (m: THREE.Mesh) => void,
+): void {
+  const barbGeo = new THREE.ConeGeometry(0.011, 0.042, 4)
+  const up = new THREE.Vector3(0, 1, 0)
+  const barbsPerRing = 10
+  for (let b = 0; b < barbsPerRing; b++) {
+    const a = (b / barbsPerRing) * Math.PI * 2
+    const py = cy + Math.sin(a) * coilR
+    const pz = cz + Math.cos(a) * coilR
+    const outward = new THREE.Vector3(0, Math.sin(a), Math.cos(a)).normalize()
+    const dir = outward.clone().add(new THREE.Vector3(0, 0.45, 0)).normalize()
+
+    const barb = new THREE.Mesh(barbGeo, steel)
+    barb.position.set(cx, py, pz)
+    barb.quaternion.setFromUnitVectors(up, dir)
+    addMesh(barb)
+
+    // Inner ring barbs (classic concertina — spikes on both sides of coil)
+    if (b % 2 === 0) {
+      const innerR = coilR * 0.55
+      const ipy = cy + Math.sin(a + 0.3) * innerR
+      const ipz = cz + Math.cos(a + 0.3) * innerR
+      const innerOut = new THREE.Vector3(0, Math.sin(a + 0.3), Math.cos(a + 0.3)).normalize()
+      const innerDir = innerOut.clone().multiplyScalar(-1).add(new THREE.Vector3(0, 0.35, 0)).normalize()
+      const innerBarb = new THREE.Mesh(barbGeo, steel)
+      innerBarb.position.set(cx, ipy, ipz)
+      innerBarb.quaternion.setFromUnitVectors(up, innerDir)
+      addMesh(innerBarb)
+    }
+  }
+}
+
 function addConcertinaWire(
   W: number,
   railY: number,
@@ -73,11 +111,14 @@ function addConcertinaWire(
   for (let i = 0; i < coils; i++) {
     const t = i / Math.max(1, coils - 1)
     const x = -W / 2 + 0.14 + t * (W - 0.28)
+    const cy = railY + coilR * 0.75
+    const cz = 0.1 + (i % 2 === 0 ? 0.04 : -0.04)
     const torus = new THREE.Mesh(new THREE.TorusGeometry(coilR, tubeR, 6, 14), steel)
     torus.rotation.y = Math.PI / 2
     torus.rotation.x = i % 2 === 0 ? 0.15 : -0.15
-    torus.position.set(x, railY + coilR * 0.75, 0.1 + (i % 2 === 0 ? 0.04 : -0.04))
+    torus.position.set(x, cy, cz)
     addMesh(torus)
+    addCoilBarbs(x, cy, cz, coilR, steel, addMesh)
   }
   // Support wire through Y-brackets
   const support = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, W - 0.2, 6), steel)
