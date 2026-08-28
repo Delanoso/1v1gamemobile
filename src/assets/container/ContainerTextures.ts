@@ -7,65 +7,6 @@ function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContex
   return [c, c.getContext('2d')!]
 }
 
-/** Skull-inside-gear logo (reference miniature style). */
-export function skullGearDecalTexture(): THREE.CanvasTexture {
-  const [c, ctx] = canvas(512, 512)
-  ctx.clearRect(0, 0, 512, 512)
-  ctx.fillStyle = 'rgba(200,205,210,0.92)'
-  ctx.strokeStyle = 'rgba(160,165,170,0.95)'
-  ctx.lineWidth = 6
-
-  // Gear
-  const cx = 256
-  const cy = 256
-  const teeth = 12
-  const outerR = 175
-  const innerR = 130
-  ctx.beginPath()
-  for (let i = 0; i < teeth * 2; i++) {
-    const r = i % 2 === 0 ? outerR : innerR
-    const a = (i / (teeth * 2)) * Math.PI * 2 - Math.PI / 2
-    const x = cx + Math.cos(a) * r
-    const y = cy + Math.sin(a) * r
-    if (i === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  }
-  ctx.closePath()
-  ctx.fill()
-  ctx.stroke()
-
-  // Skull
-  ctx.fillStyle = 'rgba(210,215,220,0.95)'
-  ctx.beginPath()
-  ctx.ellipse(cx, cy - 10, 72, 82, 0, 0, Math.PI * 2)
-  ctx.fill()
-  // Jaw
-  ctx.beginPath()
-  ctx.moveTo(cx - 48, cy + 20)
-  ctx.lineTo(cx - 30, cy + 70)
-  ctx.lineTo(cx + 30, cy + 70)
-  ctx.lineTo(cx + 48, cy + 20)
-  ctx.closePath()
-  ctx.fill()
-  // Eyes
-  ctx.fillStyle = 'rgba(80,30,30,0.85)'
-  ctx.beginPath()
-  ctx.ellipse(cx - 28, cy - 18, 18, 24, 0, 0, Math.PI * 2)
-  ctx.ellipse(cx + 28, cy - 18, 18, 24, 0, 0, Math.PI * 2)
-  ctx.fill()
-  // Nose
-  ctx.beginPath()
-  ctx.moveTo(cx, cy + 2)
-  ctx.lineTo(cx - 12, cy + 22)
-  ctx.lineTo(cx + 12, cy + 22)
-  ctx.closePath()
-  ctx.fill()
-
-  const tex = new THREE.CanvasTexture(c)
-  tex.colorSpace = THREE.SRGBColorSpace
-  return tex
-}
-
 /** Diagonal hazard stripes for green container variant. */
 export function hazardStripeTexture(): THREE.CanvasTexture {
   const [c, ctx] = canvas(512, 512)

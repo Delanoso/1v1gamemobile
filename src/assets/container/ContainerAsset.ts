@@ -7,7 +7,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import {
   corrugatedNormalMap,
   hazardStripeTexture,
-  skullGearDecalTexture,
   weatheredPaintTexture,
 } from './ContainerTextures'
 
@@ -66,6 +65,92 @@ function bodyMat(color: ContainerVariant): THREE.MeshStandardMaterial {
   })
 }
 
+function gasketMat(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: 0x1a1c20, metalness: 0.1, roughness: 0.95 })
+}
+
+function addDoors(
+  parent: THREE.Group,
+  L: number,
+  W: number,
+  H: number,
+  mat: THREE.MeshStandardMaterial,
+  steel: THREE.MeshStandardMaterial,
+  locks: THREE.MeshStandardMaterial,
+): void {
+  const xFace = L / 2
+  const doorH = H * 0.9
+  const doorW = W * 0.93
+  const leafW = doorW / 2 - 0.015
+  const depth = 0.05
+  const proud = 0.03
+  const doorX = xFace + proud
+
+  const addMesh = (mesh: THREE.Mesh, pos?: THREE.Vector3) => {
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    if (pos) mesh.position.copy(pos)
+    parent.add(mesh)
+  }
+
+  // Perimeter door frame
+  const frameT = 0.09
+  addMesh(new THREE.Mesh(new THREE.BoxGeometry(frameT, frameT, doorW + frameT * 2), steel), new THREE.Vector3(doorX, doorH / 2 + frameT / 2, 0))
+  addMesh(new THREE.Mesh(new THREE.BoxGeometry(frameT, frameT, doorW + frameT * 2), steel), new THREE.Vector3(doorX, -doorH / 2 - frameT / 2, 0))
+  for (const z of [-(doorW / 2 + frameT / 2), doorW / 2 + frameT / 2]) {
+    addMesh(new THREE.Mesh(new THREE.BoxGeometry(frameT, doorH, frameT), steel), new THREE.Vector3(doorX, 0, z))
+  }
+
+  // Two corrugated door leaves (meet at center seam)
+  const leftDoor = new THREE.Mesh(new THREE.BoxGeometry(depth, doorH, leafW), mat)
+  leftDoor.position.set(doorX + depth / 2, 0, -leafW / 2 - 0.012)
+  addMesh(leftDoor)
+
+  const rightDoor = new THREE.Mesh(new THREE.BoxGeometry(depth, doorH, leafW), mat)
+  rightDoor.position.set(doorX + depth / 2, 0, leafW / 2 + 0.012)
+  addMesh(rightDoor)
+
+  // Center gasket / weather seal between leaves
+  const gasket = new THREE.Mesh(new THREE.BoxGeometry(depth + 0.01, doorH * 0.96, 0.05), gasketMat())
+  gasket.position.set(doorX + depth / 2, 0, 0)
+  addMesh(gasket)
+
+  // Horizontal stiffener ribs on each leaf
+  for (const zCenter of [-leafW / 2 - 0.012, leafW / 2 + 0.012]) {
+    for (const y of [-doorH * 0.28, doorH * 0.28]) {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(depth + 0.008, 0.05, leafW * 0.88), steel)
+      rib.position.set(doorX + depth / 2, y, zCenter)
+      addMesh(rib)
+    }
+  }
+
+  // Hinge barrels on outer edges (3 per leaf)
+  for (const side of [-1, 1] as const) {
+    const leafCenterZ = side < 0 ? -leafW / 2 - 0.012 : leafW / 2 + 0.012
+    const edgeZ = leafCenterZ + side * (leafW / 2 + 0.01)
+    for (const y of [-doorH * 0.36, 0, doorH * 0.36]) {
+      const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.14, 8), steel)
+      hinge.rotation.x = Math.PI / 2
+      hinge.position.set(doorX - 0.01, y, edgeZ)
+      addMesh(hinge)
+    }
+  }
+
+  // Cam-lock rods + twist handles (4 bars spanning both doors)
+  for (const z of [-W * 0.28, -W * 0.09, W * 0.09, W * 0.28]) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.055, doorH * 0.8, 0.075), locks)
+    bar.position.set(doorX + depth + 0.035, 0, z)
+    addMesh(bar)
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.13, 8), locks)
+    handle.rotation.z = Math.PI / 2
+    handle.position.set(doorX + depth + 0.075, -doorH * 0.34, z)
+    addMesh(handle)
+    const keeper = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.08), steel)
+    keeper.position.set(doorX + depth + 0.04, doorH * 0.38, z)
+    addMesh(keeper)
+  }
+}
+
 function addCasting(parent: THREE.Group, x: number, y: number, z: number): void {
   const g = new THREE.Group()
   g.add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), frameMat()))
@@ -88,31 +173,13 @@ export function buildProceduralContainer(color: ContainerVariant = 'red'): Conta
   const steel = frameMat()
   const locks = lockMat()
 
-  // --- Solid corrugated hull ---
+  // --- Solid corrugated hull (body sides; doors added on +X end) ---
   const hull = new THREE.Mesh(new THREE.BoxGeometry(L, H, W), mat)
   hull.castShadow = true
   hull.receiveShadow = true
   group.add(hull)
 
-  // End frame trim (doors sit flush on +X end)
-  const doorEnd = new THREE.Mesh(new THREE.BoxGeometry(0.1, H * 0.96, W * 0.96), mat)
-  doorEnd.position.set(L / 2 - 0.02, 0, 0)
-  group.add(doorEnd)
-
-  // Center door seam
-  const seam = new THREE.Mesh(new THREE.BoxGeometry(0.05, H * 0.9, 0.06), steel)
-  seam.position.set(L / 2 + 0.02, 0, 0)
-  group.add(seam)
-
-  // Four locking bars (reference miniature)
-  for (const z of [-W * 0.3, -W * 0.1, W * 0.1, W * 0.3]) {
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.06, H * 0.76, 0.075), locks)
-    bar.position.set(L / 2 + 0.06, 0, z)
-    group.add(bar)
-    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.045, 0.045), locks)
-    handle.position.set(L / 2 + 0.1, 0, z)
-    group.add(handle)
-  }
+  addDoors(group, L, W, H, mat, steel, locks)
 
   // Corner ISO posts (8)
   for (const x of [-L / 2, L / 2]) {
@@ -128,22 +195,6 @@ export function buildProceduralContainer(color: ContainerVariant = 'red'): Conta
     const rail = new THREE.Mesh(new THREE.BoxGeometry(L, 0.09, W), steel)
     rail.position.y = y
     group.add(rail)
-  }
-
-  // Skull + gear logo (red variant)
-  if (color === 'red') {
-    const logo = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.7, 1.7),
-      new THREE.MeshStandardMaterial({
-        map: skullGearDecalTexture(),
-        transparent: true,
-        depthWrite: false,
-        roughness: 1,
-        metalness: 0,
-      }),
-    )
-    logo.position.set(0, 0.1, W / 2 + 0.06)
-    group.add(logo)
   }
 
   return { group, source: 'procedural', triangleCount: countTriangles(group) }
