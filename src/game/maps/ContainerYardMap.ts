@@ -1,14 +1,14 @@
 import * as THREE from 'three'
-import type { ContainerColor } from '../materials/MapMaterials'
+import { buildBarrelCluster } from '../../assets/barrel/BarrelAsset'
 import {
-  createAsphaltMaterial,
-  createBarrelMaterial,
-  createContainerMaterial,
-  createFenceMaterial,
-  createMetalTrimMaterial,
-  createPuddleMaterial,
-  createWoodMaterial,
-} from '../materials/MapMaterials'
+  buildProceduralContainer,
+  CONTAINER_DIMS,
+  type ContainerVariant,
+} from '../../assets/container/ContainerAsset'
+import { buildCrateCluster, buildProceduralCrate } from '../../assets/crate/CrateAsset'
+import { buildProceduralFloor, FLOOR_TILE } from '../../assets/floor/FloorAsset'
+import { buildProceduralFence, FENCE_PANEL } from '../../assets/fence/FenceAsset'
+import type { ContainerColor } from '../materials/MapMaterials'
 import type { Collider } from './collision'
 
 export type { Collider } from './collision'
@@ -21,9 +21,11 @@ export interface BuiltMap {
   targetAnchors: THREE.Vector3[]
 }
 
-const CW = 2.4
-const CH = 2.6
-const CL = 6
+const CH = CONTAINER_DIMS.height
+const CW = CONTAINER_DIMS.width
+const CL = CONTAINER_DIMS.length
+
+const _bounds = new THREE.Box3()
 
 function pushCollider(
   colliders: Collider[],
@@ -40,6 +42,67 @@ function pushCollider(
   })
 }
 
+function pushColliderFromObject(colliders: Collider[], obj: THREE.Object3D): void {
+  _bounds.setFromObject(obj)
+  colliders.push({ min: _bounds.min.clone(), max: _bounds.max.clone() })
+}
+
+function placeObject(
+  group: THREE.Group,
+  colliders: Collider[],
+  obj: THREE.Object3D,
+  x: number,
+  y: number,
+  z: number,
+  rotY = 0,
+  collider = true,
+): void {
+  obj.position.set(x, y, z)
+  obj.rotation.y = rotY
+  group.add(obj)
+  if (collider) pushColliderFromObject(colliders, obj)
+}
+
+function addFloorGrid(group: THREE.Group): void {
+  const template = buildProceduralFloor().group
+  const { width: W, depth: D } = FLOOR_TILE
+  const cols = 6
+  const rows = 5
+  const ox = -((cols - 1) * W) / 2
+  const oz = -((rows - 1) * D) / 2
+  for (let iz = 0; iz < rows; iz++) {
+    for (let ix = 0; ix < cols; ix++) {
+      const tile = template.clone(true)
+      tile.position.set(ox + ix * W, 0, oz + iz * D)
+      group.add(tile)
+    }
+  }
+}
+
+function addFenceRun(
+  group: THREE.Group,
+  colliders: Collider[],
+  axis: 'x' | 'z',
+  fixed: number,
+  start: number,
+  end: number,
+  rotY: number,
+): void {
+  const template = buildProceduralFence().group
+  const panelW = FENCE_PANEL.width
+  const count = Math.ceil((end - start) / panelW)
+  const margin = (count * panelW - (end - start)) / 2
+  for (let i = 0; i < count; i++) {
+    const panel = template.clone(true)
+    const along = start + margin + panelW / 2 + i * panelW
+    if (axis === 'x') panel.position.set(along, 0, fixed)
+    else panel.position.set(fixed, 0, along)
+    panel.rotation.y = rotY
+    group.add(panel)
+    pushCollider(colliders, panelW, FENCE_PANEL.height, 0.18, panel.position.x, FENCE_PANEL.height / 2, panel.position.z)
+  }
+}
+
 function addContainer(
   group: THREE.Group,
   colliders: Collider[],
@@ -50,29 +113,21 @@ function addContainer(
   stack = 1,
   yBase = 0,
 ): THREE.Group {
-  const g = new THREE.Group()
-  const mat = createContainerMaterial(color)
+  const wrapper = new THREE.Group()
   const w = axis === 'x' ? CL : CW
   const d = axis === 'x' ? CW : CL
 
   for (let s = 0; s < stack; s++) {
-    const geo = new THREE.BoxGeometry(w, CH, d)
-    const mesh = new THREE.Mesh(geo, mat)
-    mesh.position.set(0, yBase + CH / 2 + s * CH, 0)
-    mesh.castShadow = true
-    mesh.receiveShadow = true
-    g.add(mesh)
+    const container = buildProceduralContainer(color as ContainerVariant).group
+    if (axis === 'z') container.rotation.y = Math.PI / 2
+    container.position.set(0, yBase + CH / 2 + s * CH, 0)
+    wrapper.add(container)
     pushCollider(colliders, w, CH, d, x, yBase + CH / 2 + s * CH, z)
   }
 
-  // Door end trim
-  const trim = new THREE.Mesh(new THREE.BoxGeometry(w * 0.95, CH * 0.92, 0.08), createMetalTrimMaterial())
-  trim.position.set(0, yBase + CH / 2 + (stack - 1) * CH, d / 2 + 0.02)
-  g.add(trim)
-
-  g.position.set(x, 0, z)
-  group.add(g)
-  return g
+  wrapper.position.set(x, 0, z)
+  group.add(wrapper)
+  return wrapper
 }
 
 function addAngledContainer(
@@ -83,109 +138,48 @@ function addAngledContainer(
   color: ContainerColor,
   angle: number,
 ): void {
-  const mat = createContainerMaterial(color)
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(CL, CH, CW), mat)
-  mesh.position.set(x, CH / 2, z)
-  mesh.rotation.y = angle
-  mesh.castShadow = true
-  mesh.receiveShadow = true
-  group.add(mesh)
-  // Approximate AABB collider for rotated box
+  const container = buildProceduralContainer(color as ContainerVariant).group
+  container.position.set(x, CH / 2, z)
+  container.rotation.y = angle
+  group.add(container)
   const r = Math.max(CL, CW) * 0.55
   pushCollider(colliders, r * 2, CH, r * 2, x, CH / 2, z)
 }
 
-function addFenceWall(
+function addBarrelCluster(group: THREE.Group, colliders: Collider[], x: number, z: number): void {
+  const cluster = buildBarrelCluster().group
+  placeObject(group, colliders, cluster, x, 0, z)
+}
+
+function addCrateScatter(group: THREE.Group, colliders: Collider[], x: number, z: number, rotY = 0): void {
+  const cluster = buildCrateCluster().group
+  placeObject(group, colliders, cluster, x, 0, z, rotY)
+}
+
+function addSoloCrate(
   group: THREE.Group,
   colliders: Collider[],
-  w: number,
-  h: number,
-  d: number,
   x: number,
-  y: number,
   z: number,
+  variant: 'small' | 'medium' | 'long' | 'flat' = 'medium',
+  rotY = 0,
 ): void {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), createFenceMaterial())
-  mesh.position.set(x, y, z)
-  group.add(mesh)
-  pushCollider(colliders, w, h, d, x, y, z)
+  const crate = buildProceduralCrate(variant).group
+  placeObject(group, colliders, crate, x, 0, z, rotY)
 }
 
-function addBarrelCluster(group: THREE.Group, colliders: Collider[], x: number, z: number): void {
-  const mat = createBarrelMaterial()
-  const offsets: [number, number][] = [
-    [0, 0],
-    [0.55, 0.2],
-    [-0.45, 0.35],
-  ]
-  for (const [ox, oz] of offsets) {
-    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.9, 10), mat)
-    mesh.position.set(x + ox, 0.45, z + oz)
-    mesh.castShadow = true
-    group.add(mesh)
-    pushCollider(colliders, 0.56, 0.9, 0.56, x + ox, 0.45, z + oz)
-  }
-}
-
-function addPalletStack(group: THREE.Group, colliders: Collider[], x: number, z: number): void {
-  const mat = createWoodMaterial()
-  for (let i = 0; i < 3; i++) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.12, 1), mat)
-    mesh.position.set(x, 0.06 + i * 0.14, z)
-    mesh.castShadow = true
-    mesh.receiveShadow = true
-    group.add(mesh)
-  }
-  pushCollider(colliders, 1.2, 0.45, 1, x, 0.22, z)
-}
-
-function addParkingLine(group: THREE.Group, x: number, z: number, w: number, d: number): void {
-  const line = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, d),
-    new THREE.MeshStandardMaterial({ color: 0xd8dce0, roughness: 0.95 }),
-  )
-  line.rotation.x = -Math.PI / 2
-  line.position.set(x, 0.03, z)
-  group.add(line)
-}
-
-/** MW Shipment-inspired container yard — symmetric 1v1 layout. */
+/** MW Shipment-inspired container yard — lab assets integrated. */
 export function buildContainerYardMap(): BuiltMap {
   const group = new THREE.Group()
   const colliders: Collider[] = []
 
-  // Ground
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(46, 34, 1, 1), createAsphaltMaterial())
-  ground.rotation.x = -Math.PI / 2
-  ground.receiveShadow = true
-  group.add(ground)
+  addFloorGrid(group)
 
-  // Parking bay markings
-  for (let x = -18; x <= 18; x += 6) {
-    addParkingLine(group, x, -14.5, 4.5, 0.15)
-    addParkingLine(group, x, 14.5, 4.5, 0.15)
-  }
-
-  // Puddles (visual)
-  const puddleMat = createPuddleMaterial()
-  ;[
-    [-8, 3],
-    [5, -6],
-    [12, 8],
-    [-14, -4],
-  ].forEach(([x, z]) => {
-    const puddle = new THREE.Mesh(new THREE.CircleGeometry(1.2 + Math.random(), 16), puddleMat)
-    puddle.rotation.x = -Math.PI / 2
-    puddle.position.set(x, 0.025, z)
-    puddle.scale.set(1.8, 1.2, 1)
-    group.add(puddle)
-  })
-
-  // Perimeter fence
-  addFenceWall(group, colliders, 46, 3.2, 0.25, 0, 1.6, -17.2)
-  addFenceWall(group, colliders, 46, 3.2, 0.25, 0, 1.6, 17.2)
-  addFenceWall(group, colliders, 0.25, 3.2, 34, -23.1, 1.6, 0)
-  addFenceWall(group, colliders, 0.25, 3.2, 34, 23.1, 1.6, 0)
+  // Perimeter fence (lab chain-link panels)
+  addFenceRun(group, colliders, 'x', -17.2, -23, 23, 0)
+  addFenceRun(group, colliders, 'x', 17.2, -23, 23, Math.PI)
+  addFenceRun(group, colliders, 'z', -23.1, -17, 17, Math.PI / 2)
+  addFenceRun(group, colliders, 'z', 23.1, -17, 17, -Math.PI / 2)
 
   // --- Perimeter containers (outer lane) ---
   const northZ = -12.5
@@ -214,7 +208,7 @@ export function buildContainerYardMap(): BuiltMap {
     addContainer(group, colliders, q.x + (q.x > 0 ? -3.2 : 3.2), q.z, 'z', q.c)
   }
 
-  // Mid-lane single containers (create sightline breaks)
+  // Mid-lane single containers (sightline breaks)
   addContainer(group, colliders, 0, -5, 'z', 'red')
   addContainer(group, colliders, 0, 5, 'z', 'blue')
   addContainer(group, colliders, -5, 0, 'x', 'green')
@@ -226,13 +220,9 @@ export function buildContainerYardMap(): BuiltMap {
   addAngledContainer(group, colliders, 14, -9, 'green', -Math.PI / 4)
   addAngledContainer(group, colliders, -14, 9, 'tan', -Math.PI / 4)
 
-  // Open tunnel container (both ends open visually — dark interior)
-  const tunnel = new THREE.Mesh(
-    new THREE.BoxGeometry(CL, CH, CW),
-    createContainerMaterial('blue'),
-  )
+  // Open tunnel container
+  const tunnel = buildProceduralContainer('blue').group
   tunnel.position.set(-3, CH / 2, 9)
-  tunnel.castShadow = true
   group.add(tunnel)
   pushCollider(colliders, CL, CH, CW, -3, CH / 2, 9)
   const tunnelDark = new THREE.Mesh(
@@ -242,13 +232,15 @@ export function buildContainerYardMap(): BuiltMap {
   tunnelDark.position.set(-3, CH / 2, 9)
   group.add(tunnelDark)
 
-  // Props
+  // Props — lab barrels & crates
   addBarrelCluster(group, colliders, 16, -11)
   addBarrelCluster(group, colliders, -16, 11)
-  addPalletStack(group, colliders, 10, -13)
-  addPalletStack(group, colliders, -11, 12)
+  addCrateScatter(group, colliders, 10, -13, 0.15)
+  addCrateScatter(group, colliders, -11, 12, -0.2)
+  addSoloCrate(group, colliders, -18, -6, 'long', Math.PI / 2)
+  addSoloCrate(group, colliders, 15, 6, 'flat', -0.1)
 
-  // Tarp over NW stack (MW Shipment detail)
+  // Tarp over NW stack
   const tarp = new THREE.Mesh(
     new THREE.PlaneGeometry(6.8, 3.2),
     new THREE.MeshStandardMaterial({
@@ -280,7 +272,7 @@ export function buildContainerYardMap(): BuiltMap {
     group.add(cab)
   }
 
-  // Lighting — overcast port atmosphere (MW Shipment reference)
+  // Lighting — overcast port atmosphere
   group.add(new THREE.HemisphereLight(0xd0dae4, 0x4a5058, 1.05))
   group.add(new THREE.AmbientLight(0x98a8b8, 0.28))
 
