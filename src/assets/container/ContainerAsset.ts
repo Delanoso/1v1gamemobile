@@ -6,11 +6,15 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import {
   corrugatedNormalMap,
+  corrugatedRoughnessMap,
   hazardStripeTexture,
   weatheredPaintTexture,
 } from './ContainerTextures'
 
 export const CONTAINER_DIMS = { length: 6, width: 2.4, height: 2.6 } as const
+/** ISO-style vertical rib spacing on long panels (~148 mm). */
+const RIB_PITCH = 0.148
+const RIB_DEPTH = 0.016
 
 const GLB_PATH = '/assets/maps/container-yard/container.glb'
 
@@ -56,12 +60,15 @@ function bodyMat(color: ContainerVariant): THREE.MeshStandardMaterial {
   if (!useHazard) map.repeat.set(2.5, 1)
   const normal = corrugatedNormalMap()
   normal.repeat.set(2.5, 1)
+  const rough = corrugatedRoughnessMap()
+  rough.repeat.set(2.5, 1)
   return new THREE.MeshStandardMaterial({
     map,
     normalMap: normal,
-    normalScale: new THREE.Vector2(0.18, 0.18),
-    metalness: 0.28,
-    roughness: 0.72,
+    normalScale: new THREE.Vector2(0.55, 0.38),
+    roughnessMap: rough,
+    metalness: 0.32,
+    roughness: 0.78,
   })
 }
 
@@ -102,11 +109,11 @@ function addDoors(
   }
 
   // Two corrugated door leaves (meet at center seam)
-  const leftDoor = new THREE.Mesh(new THREE.BoxGeometry(depth, doorH, leafW), mat)
+  const leftDoor = buildCorrugatedDoorLeaf(depth, doorH, leafW, mat)
   leftDoor.position.set(doorX + depth / 2, 0, -leafW / 2 - 0.012)
   addMesh(leftDoor)
 
-  const rightDoor = new THREE.Mesh(new THREE.BoxGeometry(depth, doorH, leafW), mat)
+  const rightDoor = buildCorrugatedDoorLeaf(depth, doorH, leafW, mat)
   rightDoor.position.set(doorX + depth / 2, 0, leafW / 2 + 0.012)
   addMesh(rightDoor)
 
@@ -165,7 +172,97 @@ function addCasting(parent: THREE.Group, x: number, y: number, z: number): void 
   parent.add(g)
 }
 
-/** Solid procedural container — reads as a box, not a cage. */
+/** Vertical corrugation on a panel in the XY plane (faces +Z before rotation). */
+function buildCorrugatedPanel(
+  width: number,
+  height: number,
+  ribPitch: number,
+  ribDepth: number,
+): THREE.BufferGeometry {
+  const ribs = Math.max(6, Math.round(width / ribPitch))
+  const rows = Math.max(6, Math.round(height / 0.28))
+  const geo = new THREE.PlaneGeometry(width, height, ribs, rows)
+  const pos = geo.attributes.position as THREE.BufferAttribute
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i)
+    const u = (x + width / 2) / ribPitch
+    const tri = 1 - Math.abs((u % 1) * 2 - 1)
+    const sharp = Math.pow(tri, 0.52)
+    pos.setZ(i, sharp * ribDepth)
+  }
+  geo.computeVertexNormals()
+  return geo
+}
+
+function addCorrugatedHull(
+  group: THREE.Group,
+  L: number,
+  W: number,
+  H: number,
+  mat: THREE.MeshStandardMaterial,
+): void {
+  const shellT = 0.045
+  const addFace = (mesh: THREE.Mesh) => {
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    group.add(mesh)
+  }
+
+  const longGeo = buildCorrugatedPanel(L, H, RIB_PITCH, RIB_DEPTH)
+  const shortGeo = buildCorrugatedPanel(W, H, RIB_PITCH, RIB_DEPTH * 0.92)
+
+  const south = new THREE.Mesh(longGeo, mat)
+  south.position.set(0, 0, W / 2)
+  addFace(south)
+
+  const north = new THREE.Mesh(longGeo.clone(), mat)
+  north.position.set(0, 0, -W / 2)
+  north.rotation.y = Math.PI
+  addFace(north)
+
+  const west = new THREE.Mesh(shortGeo, mat)
+  west.position.set(-L / 2, 0, 0)
+  west.rotation.y = -Math.PI / 2
+  addFace(west)
+
+  const eastShell = new THREE.Mesh(shortGeo.clone(), mat)
+  eastShell.position.set(L / 2, 0, 0)
+  eastShell.rotation.y = Math.PI / 2
+  addFace(eastShell)
+
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(L, shellT, W), mat)
+  roof.position.y = H / 2 - shellT / 2
+  addFace(roof)
+
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(L, shellT, W), mat)
+  floor.position.y = -H / 2 + shellT / 2
+  addFace(floor)
+}
+
+/** Corrugated door leaf — reads with hull ribs. */
+function buildCorrugatedDoorLeaf(
+  depth: number,
+  doorH: number,
+  leafW: number,
+  mat: THREE.MeshStandardMaterial,
+): THREE.Mesh {
+  const ribs = Math.max(4, Math.round(leafW / RIB_PITCH))
+  const geo = new THREE.BoxGeometry(depth, doorH, leafW, 1, 6, ribs)
+  const pos = geo.attributes.position as THREE.BufferAttribute
+  for (let i = 0; i < pos.count; i++) {
+    const z = pos.getZ(i)
+    const u = (z + leafW / 2) / RIB_PITCH
+    const tri = 1 - Math.abs((u % 1) * 2 - 1)
+    const sharp = Math.pow(tri, 0.52)
+    const x = pos.getX(i)
+    const outward = x > 0 ? 1 : x < 0 ? -1 : 0
+    if (outward !== 0) pos.setX(i, x + outward * sharp * RIB_DEPTH * 0.85)
+  }
+  geo.computeVertexNormals()
+  return new THREE.Mesh(geo, mat)
+}
+
+/** Solid procedural container — corrugated hull panels + door hardware. */
 export function buildProceduralContainer(color: ContainerVariant = 'red'): ContainerBuildResult {
   const group = new THREE.Group()
   const { length: L, width: W, height: H } = CONTAINER_DIMS
@@ -173,12 +270,7 @@ export function buildProceduralContainer(color: ContainerVariant = 'red'): Conta
   const steel = frameMat()
   const locks = lockMat()
 
-  // --- Solid corrugated hull (body sides; doors added on +X end) ---
-  const hull = new THREE.Mesh(new THREE.BoxGeometry(L, H, W), mat)
-  hull.castShadow = true
-  hull.receiveShadow = true
-  group.add(hull)
-
+  addCorrugatedHull(group, L, W, H, mat)
   addDoors(group, L, W, H, mat, steel, locks)
 
   // Corner ISO posts (8)

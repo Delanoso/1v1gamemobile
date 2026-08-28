@@ -39,7 +39,7 @@ export class LabApp {
   private readonly trisEl: HTMLElement
   private readonly sourceEl: HTMLElement
   private readonly hintEl: HTMLElement
-  private asset: LabAsset = 'pallet'
+  private asset: LabAsset = 'container'
   private containerColor: ContainerColor = 'red'
   private barrelVariant: BarrelVariant = 'metal-dark'
   private crateVariant: CrateVariant = 'medium'
@@ -238,7 +238,7 @@ export class LabApp {
       this.statusEl.textContent =
         result.source === 'glb'
           ? 'Using imported GLB — rotate and review on iPad.'
-          : 'Procedural v1 — iterate here until it matches your reference, or drop a Tripo GLB.'
+          : 'Procedural v2 — corrugated hull panels, stronger rib normals, door corrugation.'
       return
     }
 
