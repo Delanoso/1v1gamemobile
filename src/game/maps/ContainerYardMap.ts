@@ -24,8 +24,10 @@ export interface BuiltMap {
 const CH = CONTAINER_DIMS.height
 const CW = CONTAINER_DIMS.width
 const CL = CONTAINER_DIMS.length
-/** Pull container hitboxes inward so alley gaps match what players see. */
-const CONTAINER_COLLIDER_INSET = 0.28
+/** Pull axis-aligned container hitboxes inward so alley gaps match what players see. */
+const CONTAINER_COLLIDER_INSET = 0.22
+/** Angled containers use a rotated AABB — only a light inset so corners stay solid. */
+const ANGLED_COLLIDER_INSET = 0.08
 
 const containerProtos = new Map<ContainerVariant, THREE.Object3D>()
 let fenceProto: THREE.Object3D | null = null
@@ -53,8 +55,8 @@ function pushContainerCollider(
   x: number,
   y: number,
   z: number,
+  inset = CONTAINER_COLLIDER_INSET,
 ): void {
-  const inset = CONTAINER_COLLIDER_INSET
   pushCollider(
     colliders,
     Math.max(0.5, w - inset * 2),
@@ -64,6 +66,20 @@ function pushContainerCollider(
     y,
     z,
   )
+}
+
+function pushRotatedContainerCollider(
+  colliders: Collider[],
+  x: number,
+  y: number,
+  z: number,
+  angle: number,
+): void {
+  const c = Math.abs(Math.cos(angle))
+  const s = Math.abs(Math.sin(angle))
+  const w = CL * c + CW * s
+  const d = CL * s + CW * c
+  pushContainerCollider(colliders, w, CH, d, x, y, z, ANGLED_COLLIDER_INSET)
 }
 
 function cloneContainer(color: ContainerColor): THREE.Object3D {
@@ -143,8 +159,7 @@ function addAngledContainer(
   container.position.set(x, CH / 2, z)
   container.rotation.y = angle
   group.add(container)
-  const r = CL * 0.38
-  pushContainerCollider(colliders, r * 2, CH, r * 2, x, CH / 2, z)
+  pushRotatedContainerCollider(colliders, x, CH / 2, z, angle)
 }
 
 function addBarrelCluster(group: THREE.Group, colliders: Collider[], x: number, z: number): void {
@@ -293,9 +308,9 @@ export function buildContainerYardMap(): BuiltMap {
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(-7, CH, -7),
     new THREE.Vector3(7, CH, 7),
-    new THREE.Vector3(0, 0, -5),
-    new THREE.Vector3(5, 0, 0),
-    new THREE.Vector3(-14, 0, -9),
+    new THREE.Vector3(-3, 0, -3),
+    new THREE.Vector3(3, 0, -3),
+    new THREE.Vector3(-12, 0, -2),
     new THREE.Vector3(3, 0, 3),
   ]
 
