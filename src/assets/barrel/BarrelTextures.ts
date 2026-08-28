@@ -63,9 +63,9 @@ export function yellowHazardBodyTexture(): THREE.CanvasTexture {
   return hazardBodyTexture('#d4b820', '#c0a418')
 }
 
-export function biohazardDecalTexture(): THREE.CanvasTexture {
+export function biohazardDecalTexture(background = '#c03038'): THREE.CanvasTexture {
   const [c, ctx] = canvas(256, 256)
-  ctx.fillStyle = '#b82830'
+  ctx.fillStyle = background
   ctx.beginPath()
   ctx.arc(128, 128, 118, 0, Math.PI * 2)
   ctx.fill()
@@ -87,9 +87,9 @@ export function biohazardDecalTexture(): THREE.CanvasTexture {
   return tex
 }
 
-export function radiationDecalTexture(): THREE.CanvasTexture {
+export function radiationDecalTexture(stickerColor = '#101010'): THREE.CanvasTexture {
   const [c, ctx] = canvas(256, 256)
-  ctx.fillStyle = '#101010'
+  ctx.fillStyle = stickerColor
   ctx.beginPath()
   ctx.moveTo(128, 24)
   ctx.lineTo(232, 208)
@@ -118,9 +118,9 @@ export function radiationDecalTexture(): THREE.CanvasTexture {
   return tex
 }
 
-export function toxicSkullDecalTexture(): THREE.CanvasTexture {
+export function toxicSkullDecalTexture(stickerColor = '#101010'): THREE.CanvasTexture {
   const [c, ctx] = canvas(256, 256)
-  ctx.fillStyle = '#101010'
+  ctx.fillStyle = stickerColor
   ctx.beginPath()
   ctx.moveTo(128, 24)
   ctx.lineTo(232, 208)
@@ -195,9 +195,9 @@ export function metalBandTexture(): THREE.CanvasTexture {
 }
 
 /** Skull hazard decal (metal barrel side). */
-export function skullDecalTexture(): THREE.CanvasTexture {
+export function skullDecalTexture(background = '#8a2830'): THREE.CanvasTexture {
   const [c, ctx] = canvas(256, 256)
-  ctx.fillStyle = '#8a2830'
+  ctx.fillStyle = background
   ctx.fillRect(0, 0, 256, 256)
   ctx.fillStyle = '#1a1c20'
   // Skull
