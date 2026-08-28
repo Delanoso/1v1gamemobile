@@ -125,7 +125,6 @@ export function buildProceduralFloor(): FloorBuildResult {
 
 export async function buildFloor(): Promise<FloorBuildResult> {
   try {
-    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js')
     const loader = new GLTFLoader()
     const gltf = await loader.loadAsync(GLB_PATH)
     const model = gltf.scene.clone()
