@@ -5,8 +5,15 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    // Allow Cloudflare / LocalTunnel preview URLs on iPad Safari
     allowedHosts: true,
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        lab: 'lab.html',
+      },
+    },
   },
   plugins: [
     VitePWA({

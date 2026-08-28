@@ -1,0 +1,139 @@
+import './lab.css'
+import * as THREE from 'three'
+import { StudioScene } from './StudioScene'
+import { buildContainer } from '../assets/container/ContainerAsset'
+import type { ContainerColor } from '../game/materials/MapMaterials'
+
+export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel'
+
+const ASSET_LABELS: Record<LabAsset, string> = {
+  container: 'Shipping Container',
+  floor: 'Asphalt Floor',
+  fence: 'Chain-link Fence',
+  barrel: 'Barrel',
+}
+
+export class LabApp {
+  private readonly studio: StudioScene
+  private readonly panel: HTMLElement
+  private readonly statusEl: HTMLElement
+  private readonly trisEl: HTMLElement
+  private readonly sourceEl: HTMLElement
+  private asset: LabAsset = 'container'
+  private containerColor: ContainerColor = 'red'
+  private clock = new THREE.Clock()
+
+  constructor(host: HTMLElement) {
+    host.className = 'lab-host'
+    this.studio = new StudioScene(host)
+
+    this.panel = document.createElement('div')
+    this.panel.className = 'lab-panel'
+    this.panel.innerHTML = `
+      <p class="lab-eyebrow">ASSET LAB</p>
+      <h1 id="lab-title">Shipping Container</h1>
+      <p class="lab-sub">Polish one asset to 100% before it goes in the game.</p>
+      <div class="lab-tabs" id="lab-tabs"></div>
+      <div class="lab-meta">
+        <span id="lab-source">Source: …</span>
+        <span id="lab-tris">Tris: …</span>
+      </div>
+      <p class="lab-status" id="lab-status">Loading…</p>
+      <div class="lab-actions">
+        <button type="button" id="lab-reset">Reset view</button>
+        <button type="button" id="lab-reload">Reload asset</button>
+      </div>
+      <p class="lab-hint">Drag to rotate · Turntable auto-spin · Drop GLB at<br><code>public/assets/maps/container-yard/container.glb</code></p>
+    `
+    host.appendChild(this.panel)
+
+    this.statusEl = this.panel.querySelector('#lab-status')!
+    this.trisEl = this.panel.querySelector('#lab-tris')!
+    this.sourceEl = this.panel.querySelector('#lab-source')!
+    this.buildTabs()
+
+    const params = new URLSearchParams(window.location.search)
+    const a = params.get('asset') as LabAsset | null
+    if (a && a in ASSET_LABELS) this.asset = a
+
+    this.panel.querySelector('#lab-reset')!.addEventListener('click', () => this.studio.resetView())
+    this.panel.querySelector('#lab-reload')!.addEventListener('click', () => void this.loadAsset())
+
+    if (this.asset === 'container') {
+      this.addColorSwatches()
+    }
+
+    void this.loadAsset()
+    this.loop()
+  }
+
+  private buildTabs(): void {
+    const tabs = this.panel.querySelector('#lab-tabs')!
+    ;(Object.keys(ASSET_LABELS) as LabAsset[]).forEach((key) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.textContent = ASSET_LABELS[key]
+      btn.className = key === this.asset ? 'active' : ''
+      if (key !== 'container') {
+        btn.disabled = true
+        btn.title = 'Coming next — finish container first'
+      } else {
+        btn.addEventListener('click', () => {
+          this.asset = key
+          tabs.querySelectorAll('button').forEach((b) => b.classList.remove('active'))
+          btn.classList.add('active')
+          void this.loadAsset()
+        })
+      }
+      tabs.appendChild(btn)
+    })
+  }
+
+  private addColorSwatches(): void {
+    const row = document.createElement('div')
+    row.className = 'lab-colors'
+    const colors: ContainerColor[] = ['red', 'blue', 'green', 'tan']
+    const labels = { red: 'Red', blue: 'Blue', green: 'Green', tan: 'Tan' }
+    colors.forEach((c) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = labels[c]
+      b.className = `swatch swatch-${c}${c === this.containerColor ? ' active' : ''}`
+      b.addEventListener('click', () => {
+        this.containerColor = c
+        row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+        b.classList.add('active')
+        void this.loadAsset()
+      })
+      row.appendChild(b)
+    })
+    this.panel.querySelector('.lab-actions')!.before(row)
+  }
+
+  private async loadAsset(): Promise<void> {
+    const title = this.panel.querySelector('#lab-title')!
+    title.textContent = ASSET_LABELS[this.asset]
+    this.statusEl.textContent = 'Loading…'
+
+    if (this.asset === 'container') {
+      const result = await buildContainer(this.containerColor)
+      this.studio.setAsset(result.group)
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? 'Using imported GLB — rotate and review on iPad.'
+          : 'Procedural v1 — iterate here until it matches your reference, or drop a Tripo GLB.'
+      return
+    }
+
+    this.statusEl.textContent = `${ASSET_LABELS[this.asset]} lab opens after container is approved.`
+  }
+
+  private loop = (): void => {
+    requestAnimationFrame(this.loop)
+    const dt = this.clock.getDelta()
+    this.studio.update(dt)
+    this.studio.render()
+  }
+}

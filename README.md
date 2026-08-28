@@ -19,7 +19,12 @@ npm install
 npm run dev
 ```
 
-Open the local URL on your iPad (same network). Use landscape. Tap **Enter Range**.
+- **Game:** `/` → tap **Play**
+- **Asset Lab** (one asset at a time): `/lab.html`
+
+See `docs/ASSET_LAB.md` for the polish workflow.
+
+Open the local URL on your iPad (same network). Use landscape.
 
 ```bash
 npm run build
