@@ -121,7 +121,7 @@ export class Game {
       this.hitables.push(...t.hitMeshes)
     }
 
-    this.player.spawn(this.spawnPoint, this.spawnYaw)
+    this.player.spawn(this.spawnPoint, this.spawnYaw, this.colliders)
     this.scene.add(createSkyDome())
     this.rain = new RainEffect()
     this.scene.add(this.rain.group)
@@ -151,7 +151,7 @@ export class Game {
     this.weapon.reset()
     this.kills = 0
     this.reloadWasActive = false
-    this.player.spawn(this.spawnPoint, this.spawnYaw)
+    this.player.spawn(this.spawnPoint, this.spawnYaw, this.colliders)
     this.hud.setHealth(this.player.health)
     this.hud.pushFeed('Container yard live — Shipment-style layout')
     void audio.resume()

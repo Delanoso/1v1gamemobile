@@ -32,7 +32,7 @@ export class PlayerController {
     this.camera = new THREE.PerspectiveCamera(GAME.weapon.hipFov, 1, 0.05, 200)
   }
 
-  spawn(at: THREE.Vector3, yaw = 0): void {
+  spawn(at: THREE.Vector3, yaw = 0, colliders?: Collider[]): void {
     this.position.copy(at)
     this.yaw = yaw
     this.pitch = 0
@@ -44,6 +44,11 @@ export class PlayerController {
     this.crouching = false
     this.bobPhase = 0
     this.cameraKick = 0
+    if (colliders?.length) {
+      for (let i = 0; i < 4; i++) {
+        resolveCapsuleColliders(this.position, GAME.player.radius, GAME.player.eyeHeight, colliders)
+      }
+    }
     this.syncCamera()
   }
 

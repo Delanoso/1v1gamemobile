@@ -230,7 +230,7 @@ export function buildContainerYardMap(): BuiltMap {
   addBarrelCluster(group, colliders, -16, 11)
   addCratePair(group, colliders, 10, -13, 0.15)
   addCratePair(group, colliders, -11, 12, -0.2)
-  addCratePair(group, colliders, -18, -6, Math.PI / 2)
+  addCratePair(group, colliders, 14, 8, -0.3)
 
   const tarp = new THREE.Mesh(
     new THREE.PlaneGeometry(6.8, 3.2),
@@ -282,7 +282,8 @@ export function buildContainerYardMap(): BuiltMap {
   rim.position.set(20, 18, -15)
   group.add(rim)
 
-  const spawns = [new THREE.Vector3(-16, 0, -11), new THREE.Vector3(16, 0, 11)]
+  // Clear center lanes — old (-16,-11) wedged into perimeter containers + crates
+  const spawns = [new THREE.Vector3(0, 0, 10), new THREE.Vector3(0, 0, -10)]
 
   const targetAnchors = [
     new THREE.Vector3(0, 0, 0),
