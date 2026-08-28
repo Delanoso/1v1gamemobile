@@ -65,6 +65,8 @@ export function groundHeightAt(
     if (x < c.min.x - 0.01 || x > c.max.x + 0.01) continue
     if (z < c.min.z - 0.01 || z > c.max.z + 0.01) continue
     if (c.max.y > feetY + 1.2) continue
+    // Skip thin floor slabs — only stand on props (crates, containers, barrels).
+    if (c.max.y - c.min.y < 0.25 && c.max.y <= 0.12) continue
     if (c.max.y > best && c.max.y <= feetY + 0.55) best = c.max.y
   }
   return best

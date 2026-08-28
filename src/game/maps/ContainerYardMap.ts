@@ -194,12 +194,13 @@ export function buildContainerYardMap(): BuiltMap {
   const colliders: Collider[] = []
 
   group.add(buildMapGround(48, 36))
-  pushCollider(colliders, 48, 0.1, 36, 0, 0, 0)
+  // Floor height comes from groundHeightAt default (y=0) — no horizontal floor collider
+  // (a full-slab collider pushes spawns to the nearest map edge).
 
-  addFenceRun(group, colliders, 'x', -17.2, -23, 23, 0)
-  addFenceRun(group, colliders, 'x', 17.2, -23, 23, Math.PI)
-  addFenceRun(group, colliders, 'z', -23.1, -17, 17, Math.PI / 2)
-  addFenceRun(group, colliders, 'z', 23.1, -17, 17, -Math.PI / 2)
+  addFenceRun(group, colliders, 'x', -23, -17, 17, 0)
+  addFenceRun(group, colliders, 'x', 23, -17, 17, Math.PI)
+  addFenceRun(group, colliders, 'z', -17, -23, 23, Math.PI / 2)
+  addFenceRun(group, colliders, 'z', 17, -23, 23, -Math.PI / 2)
 
   const northZ = -12.5
   const southZ = 12.5
@@ -302,8 +303,8 @@ export function buildContainerYardMap(): BuiltMap {
   rim.position.set(20, 18, -15)
   group.add(rim)
 
-  // Center lanes — face each other toward mid map (not toward perimeter fence).
-  const spawns = [new THREE.Vector3(0, 0, 8), new THREE.Vector3(0, 0, -8)]
+  // Center duel lanes — clear of mid containers at z=±5.
+  const spawns = [new THREE.Vector3(0, 0, 3), new THREE.Vector3(0, 0, -3)]
 
   const targetAnchors = [
     new THREE.Vector3(0, 0, 0),

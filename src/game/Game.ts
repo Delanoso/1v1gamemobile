@@ -43,7 +43,7 @@ export class Game {
   private muzzleTimer = 0
   private running = false
   private kills = 0
-  private spawnPoint = new THREE.Vector3(0, 0, 8)
+  private spawnPoint = new THREE.Vector3(0, 0, 3)
   private spawnYaw = 0
   private reloadWasActive = false
 
