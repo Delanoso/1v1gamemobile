@@ -383,13 +383,11 @@ export class LabApp {
         svd: 'DMR',
         ak74: 'AK-74',
       }
-      const shotgunNote =
-        'Procedural v1 — pump shotgun: wood stock/pump, cheek riser, vented heat shield, side saddle.'
       this.statusEl.textContent =
         result.source === 'glb'
           ? `Using imported ${variantNames[this.weaponVariant]} GLB.`
           : this.weaponVariant === 'shotgun'
-            ? shotgunNote
+            ? 'Procedural v2 — lathe stock/pump/receiver. Drop shotgun.glb for studio quality.'
             : `Procedural blockout — drop GLB at public/assets/weapons/ for reference quality.`
     }
   }
