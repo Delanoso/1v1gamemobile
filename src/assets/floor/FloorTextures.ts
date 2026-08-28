@@ -8,7 +8,7 @@ function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContex
 }
 
 /** Dark industrial asphalt with aggregate, stains, and worn lane markings. */
-export function asphaltColorMap(): THREE.CanvasTexture {
+export function asphaltColorMap(options?: { laneMarkings?: boolean }): THREE.CanvasTexture {
   const [c, ctx] = canvas(1024, 1024)
   ctx.fillStyle = '#2b2e32'
   ctx.fillRect(0, 0, 1024, 1024)
@@ -41,14 +41,16 @@ export function asphaltColorMap(): THREE.CanvasTexture {
     ctx.fillRect(x - r, y - r, r * 2, r * 2)
   }
 
-  // Worn parking line (horizontal stripe through center)
-  ctx.fillStyle = 'rgba(210,214,220,0.55)'
-  ctx.fillRect(0, 470, 1024, 28)
-  ctx.fillStyle = 'rgba(0,0,0,0.12)'
-  ctx.fillRect(0, 498, 1024, 4)
-  ctx.fillStyle = 'rgba(255,255,255,0.08)'
-  for (let x = 0; x < 1024; x += 42) {
-    ctx.fillRect(x, 472, 22, 24)
+  // Worn parking line (horizontal stripe through center) — optional; off on map slab to avoid false "walls"
+  if (options?.laneMarkings !== false) {
+    ctx.fillStyle = 'rgba(210,214,220,0.55)'
+    ctx.fillRect(0, 470, 1024, 28)
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'
+    ctx.fillRect(0, 498, 1024, 4)
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'
+    for (let x = 0; x < 1024; x += 42) {
+      ctx.fillRect(x, 472, 22, 24)
+    }
   }
 
   const tex = new THREE.CanvasTexture(c)

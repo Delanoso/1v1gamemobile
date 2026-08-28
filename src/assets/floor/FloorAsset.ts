@@ -33,8 +33,8 @@ function countTriangles(root: THREE.Object3D): number {
   return Math.floor(n)
 }
 
-function asphaltMat(repeatX = 1, repeatY = 1): THREE.MeshStandardMaterial {
-  const map = asphaltColorMap()
+function asphaltMat(repeatX = 1, repeatY = 1, laneMarkings = true): THREE.MeshStandardMaterial {
+  const map = asphaltColorMap({ laneMarkings })
   map.repeat.set(repeatX, repeatY)
   const rough = asphaltRoughnessMap()
   rough.repeat.set(repeatX, repeatY)
@@ -130,7 +130,7 @@ export function buildProceduralFloor(): FloorBuildResult {
 export function buildMapGround(width: number, depth: number): THREE.Group {
   const group = new THREE.Group()
   const T = 0.1
-  const mat = asphaltMat(width / FLOOR_TILE.width, depth / FLOOR_TILE.depth)
+  const mat = asphaltMat(width / FLOOR_TILE.width, depth / FLOOR_TILE.depth, false)
   const puddle = puddleMaterial()
 
   const slab = new THREE.Mesh(new THREE.BoxGeometry(width, T, depth), mat)

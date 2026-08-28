@@ -24,6 +24,8 @@ export interface BuiltMap {
 const CH = CONTAINER_DIMS.height
 const CW = CONTAINER_DIMS.width
 const CL = CONTAINER_DIMS.length
+/** Pull container hitboxes inward so alley gaps match what players see. */
+const CONTAINER_COLLIDER_INSET = 0.18
 
 const _bounds = new THREE.Box3()
 const containerProtos = new Map<ContainerVariant, THREE.Object3D>()
@@ -42,6 +44,27 @@ function pushCollider(
     min: new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2),
     max: new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2),
   })
+}
+
+function pushContainerCollider(
+  colliders: Collider[],
+  w: number,
+  h: number,
+  d: number,
+  x: number,
+  y: number,
+  z: number,
+): void {
+  const inset = CONTAINER_COLLIDER_INSET
+  pushCollider(
+    colliders,
+    Math.max(0.5, w - inset * 2),
+    h,
+    Math.max(0.5, d - inset * 2),
+    x,
+    y,
+    z,
+  )
 }
 
 function pushColliderFromObject(colliders: Collider[], obj: THREE.Object3D): void {
@@ -123,7 +146,7 @@ function addContainer(
     if (axis === 'z') container.rotation.y = Math.PI / 2
     container.position.set(0, yBase + CH / 2 + s * CH, 0)
     wrapper.add(container)
-    pushCollider(colliders, w, CH, d, x, yBase + CH / 2 + s * CH, z)
+    pushContainerCollider(colliders, w, CH, d, x, yBase + CH / 2 + s * CH, z)
   }
 
   wrapper.position.set(x, 0, z)
@@ -144,7 +167,7 @@ function addAngledContainer(
   container.rotation.y = angle
   group.add(container)
   const r = Math.max(CL, CW) * 0.55
-  pushCollider(colliders, r * 2, CH, r * 2, x, CH / 2, z)
+  pushContainerCollider(colliders, r * 2, CH, r * 2, x, CH / 2, z)
 }
 
 function addBarrelCluster(group: THREE.Group, colliders: Collider[], x: number, z: number): void {
@@ -218,7 +241,7 @@ export function buildContainerYardMap(): BuiltMap {
   const tunnel = cloneContainer('blue')
   tunnel.position.set(-3, CH / 2, 9)
   group.add(tunnel)
-  pushCollider(colliders, CL, CH, CW, -3, CH / 2, 9)
+  pushContainerCollider(colliders, CL, CH, CW, -3, CH / 2, 9)
   const tunnelDark = new THREE.Mesh(
     new THREE.BoxGeometry(CL * 0.85, CH * 0.8, CW * 0.85),
     new THREE.MeshStandardMaterial({ color: 0x0a0c10, roughness: 1 }),
@@ -228,9 +251,9 @@ export function buildContainerYardMap(): BuiltMap {
 
   addBarrelCluster(group, colliders, 16, -11)
   addBarrelCluster(group, colliders, -16, 11)
-  addCratePair(group, colliders, 10, -13, 0.15)
-  addCratePair(group, colliders, -11, 12, -0.2)
-  addCratePair(group, colliders, 14, 8, -0.3)
+  addCratePair(group, colliders, -12, 4, -0.2)
+  addCratePair(group, colliders, 12, -3, 0.15)
+  addCratePair(group, colliders, 3, 3, -0.3)
 
   const tarp = new THREE.Mesh(
     new THREE.PlaneGeometry(6.8, 3.2),
@@ -292,7 +315,7 @@ export function buildContainerYardMap(): BuiltMap {
     new THREE.Vector3(0, 0, -5),
     new THREE.Vector3(5, 0, 0),
     new THREE.Vector3(-14, 0, -9),
-    new THREE.Vector3(10, 0, -13),
+    new THREE.Vector3(3, 0, 3),
   ]
 
   return { group, colliders, spawns, targetAnchors }
