@@ -210,6 +210,38 @@ export function buildProceduralFence(): FenceBuildResult {
   return { group, source: 'procedural', triangleCount: countTriangles(group) }
 }
 
+/** Lightweight fence panel for in-game map (no razor wire / 3D lattice). */
+export function buildMapFencePanel(): FenceBuildResult {
+  const group = new THREE.Group()
+  const { width: W, height: H } = FENCE_PANEL
+  const steel = steelMat()
+  const postR = 0.04
+  const railY = H
+
+  for (const x of [-W / 2, W / 2]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(postR, postR, H, 8), steel)
+    post.position.set(x, H / 2, 0)
+    post.castShadow = true
+    group.add(post)
+  }
+
+  const topRail = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, W - postR * 2, 8), steel)
+  topRail.rotation.z = Math.PI / 2
+  topRail.position.set(0, railY, 0)
+  group.add(topRail)
+
+  const meshW = W - postR * 2.4
+  const meshH = H - 0.14
+  const backing = new THREE.Mesh(
+    new THREE.PlaneGeometry(meshW, meshH),
+    chainMeshMat(8, 6),
+  )
+  backing.position.set(0, meshH / 2 + 0.02, 0.005)
+  group.add(backing)
+
+  return { group, source: 'procedural', triangleCount: countTriangles(group) }
+}
+
 export async function buildFence(): Promise<FenceBuildResult> {
   try {
     const loader = new GLTFLoader()

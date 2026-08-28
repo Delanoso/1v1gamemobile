@@ -5,9 +5,9 @@ import {
   CONTAINER_DIMS,
   type ContainerVariant,
 } from '../../assets/container/ContainerAsset'
-import { buildCrateCluster, buildProceduralCrate } from '../../assets/crate/CrateAsset'
-import { buildProceduralFloor, FLOOR_TILE } from '../../assets/floor/FloorAsset'
-import { buildProceduralFence, FENCE_PANEL } from '../../assets/fence/FenceAsset'
+import { buildProceduralCrate } from '../../assets/crate/CrateAsset'
+import { buildMapGround } from '../../assets/floor/FloorAsset'
+import { buildMapFencePanel, FENCE_PANEL } from '../../assets/fence/FenceAsset'
 import type { ContainerColor } from '../materials/MapMaterials'
 import type { Collider } from './collision'
 
@@ -26,6 +26,8 @@ const CW = CONTAINER_DIMS.width
 const CL = CONTAINER_DIMS.length
 
 const _bounds = new THREE.Box3()
+const containerProtos = new Map<ContainerVariant, THREE.Object3D>()
+let fenceProto: THREE.Object3D | null = null
 
 function pushCollider(
   colliders: Collider[],
@@ -43,6 +45,7 @@ function pushCollider(
 }
 
 function pushColliderFromObject(colliders: Collider[], obj: THREE.Object3D): void {
+  obj.updateMatrixWorld(true)
   _bounds.setFromObject(obj)
   colliders.push({ min: _bounds.min.clone(), max: _bounds.max.clone() })
 }
@@ -63,20 +66,19 @@ function placeObject(
   if (collider) pushColliderFromObject(colliders, obj)
 }
 
-function addFloorGrid(group: THREE.Group): void {
-  const template = buildProceduralFloor().group
-  const { width: W, depth: D } = FLOOR_TILE
-  const cols = 6
-  const rows = 5
-  const ox = -((cols - 1) * W) / 2
-  const oz = -((rows - 1) * D) / 2
-  for (let iz = 0; iz < rows; iz++) {
-    for (let ix = 0; ix < cols; ix++) {
-      const tile = template.clone(true)
-      tile.position.set(ox + ix * W, 0, oz + iz * D)
-      group.add(tile)
-    }
+function cloneContainer(color: ContainerColor): THREE.Object3D {
+  const key = color as ContainerVariant
+  let proto = containerProtos.get(key)
+  if (!proto) {
+    proto = buildProceduralContainer(key).group
+    containerProtos.set(key, proto)
   }
+  return proto.clone()
+}
+
+function cloneFencePanel(): THREE.Object3D {
+  if (!fenceProto) fenceProto = buildMapFencePanel().group
+  return fenceProto.clone()
 }
 
 function addFenceRun(
@@ -88,12 +90,11 @@ function addFenceRun(
   end: number,
   rotY: number,
 ): void {
-  const template = buildProceduralFence().group
   const panelW = FENCE_PANEL.width
   const count = Math.ceil((end - start) / panelW)
   const margin = (count * panelW - (end - start)) / 2
   for (let i = 0; i < count; i++) {
-    const panel = template.clone(true)
+    const panel = cloneFencePanel()
     const along = start + margin + panelW / 2 + i * panelW
     if (axis === 'x') panel.position.set(along, 0, fixed)
     else panel.position.set(fixed, 0, along)
@@ -118,7 +119,7 @@ function addContainer(
   const d = axis === 'x' ? CW : CL
 
   for (let s = 0; s < stack; s++) {
-    const container = buildProceduralContainer(color as ContainerVariant).group
+    const container = cloneContainer(color)
     if (axis === 'z') container.rotation.y = Math.PI / 2
     container.position.set(0, yBase + CH / 2 + s * CH, 0)
     wrapper.add(container)
@@ -138,7 +139,7 @@ function addAngledContainer(
   color: ContainerColor,
   angle: number,
 ): void {
-  const container = buildProceduralContainer(color as ContainerVariant).group
+  const container = cloneContainer(color)
   container.position.set(x, CH / 2, z)
   container.rotation.y = angle
   group.add(container)
@@ -148,40 +149,37 @@ function addAngledContainer(
 
 function addBarrelCluster(group: THREE.Group, colliders: Collider[], x: number, z: number): void {
   const cluster = buildBarrelCluster().group
+  cluster.traverse((o) => {
+    if (o instanceof THREE.Mesh && o.geometry.type !== 'CylinderGeometry') o.castShadow = false
+  })
   placeObject(group, colliders, cluster, x, 0, z)
 }
 
-function addCrateScatter(group: THREE.Group, colliders: Collider[], x: number, z: number, rotY = 0): void {
-  const cluster = buildCrateCluster().group
-  placeObject(group, colliders, cluster, x, 0, z, rotY)
+function addCratePair(group: THREE.Group, colliders: Collider[], x: number, z: number, rotY = 0): void {
+  const wrapper = new THREE.Group()
+  const medium = buildProceduralCrate('medium').group
+  medium.position.set(0, 0, 0)
+  const small = buildProceduralCrate('small').group
+  small.position.set(0.85, 0, 0.35)
+  wrapper.add(medium, small)
+  wrapper.traverse((o) => {
+    if (o instanceof THREE.Mesh) o.castShadow = false
+  })
+  placeObject(group, colliders, wrapper, x, 0, z, rotY)
 }
 
-function addSoloCrate(
-  group: THREE.Group,
-  colliders: Collider[],
-  x: number,
-  z: number,
-  variant: 'small' | 'medium' | 'long' | 'flat' = 'medium',
-  rotY = 0,
-): void {
-  const crate = buildProceduralCrate(variant).group
-  placeObject(group, colliders, crate, x, 0, z, rotY)
-}
-
-/** MW Shipment-inspired container yard — lab assets integrated. */
+/** MW Shipment-inspired container yard — lab assets integrated (game-optimized). */
 export function buildContainerYardMap(): BuiltMap {
   const group = new THREE.Group()
   const colliders: Collider[] = []
 
-  addFloorGrid(group)
+  group.add(buildMapGround(48, 36))
 
-  // Perimeter fence (lab chain-link panels)
   addFenceRun(group, colliders, 'x', -17.2, -23, 23, 0)
   addFenceRun(group, colliders, 'x', 17.2, -23, 23, Math.PI)
   addFenceRun(group, colliders, 'z', -23.1, -17, 17, Math.PI / 2)
   addFenceRun(group, colliders, 'z', 23.1, -17, 17, -Math.PI / 2)
 
-  // --- Perimeter containers (outer lane) ---
   const northZ = -12.5
   const southZ = 12.5
   const westX = -18.5
@@ -196,7 +194,6 @@ export function buildContainerYardMap(): BuiltMap {
     addContainer(group, colliders, eastX, z, 'z', perimColors[(i + 3) % perimColors.length])
   })
 
-  // --- Center Shipment cross (stacked pairs) ---
   const quad = [
     { x: -7, z: -7, c: 'red' as ContainerColor },
     { x: 7, z: -7, c: 'blue' as ContainerColor },
@@ -208,20 +205,17 @@ export function buildContainerYardMap(): BuiltMap {
     addContainer(group, colliders, q.x + (q.x > 0 ? -3.2 : 3.2), q.z, 'z', q.c)
   }
 
-  // Mid-lane single containers (sightline breaks)
   addContainer(group, colliders, 0, -5, 'z', 'red')
   addContainer(group, colliders, 0, 5, 'z', 'blue')
   addContainer(group, colliders, -5, 0, 'x', 'green')
   addContainer(group, colliders, 5, 0, 'x', 'tan')
 
-  // Angled corner wedges (Shipment-style)
   addAngledContainer(group, colliders, -14, -9, 'blue', Math.PI / 4)
   addAngledContainer(group, colliders, 14, 9, 'red', Math.PI / 4)
   addAngledContainer(group, colliders, 14, -9, 'green', -Math.PI / 4)
   addAngledContainer(group, colliders, -14, 9, 'tan', -Math.PI / 4)
 
-  // Open tunnel container
-  const tunnel = buildProceduralContainer('blue').group
+  const tunnel = cloneContainer('blue')
   tunnel.position.set(-3, CH / 2, 9)
   group.add(tunnel)
   pushCollider(colliders, CL, CH, CW, -3, CH / 2, 9)
@@ -232,15 +226,12 @@ export function buildContainerYardMap(): BuiltMap {
   tunnelDark.position.set(-3, CH / 2, 9)
   group.add(tunnelDark)
 
-  // Props — lab barrels & crates
   addBarrelCluster(group, colliders, 16, -11)
   addBarrelCluster(group, colliders, -16, 11)
-  addCrateScatter(group, colliders, 10, -13, 0.15)
-  addCrateScatter(group, colliders, -11, 12, -0.2)
-  addSoloCrate(group, colliders, -18, -6, 'long', Math.PI / 2)
-  addSoloCrate(group, colliders, 15, 6, 'flat', -0.1)
+  addCratePair(group, colliders, 10, -13, 0.15)
+  addCratePair(group, colliders, -11, 12, -0.2)
+  addCratePair(group, colliders, -18, -6, Math.PI / 2)
 
-  // Tarp over NW stack
   const tarp = new THREE.Mesh(
     new THREE.PlaneGeometry(6.8, 3.2),
     new THREE.MeshStandardMaterial({
@@ -252,10 +243,8 @@ export function buildContainerYardMap(): BuiltMap {
   )
   tarp.position.set(-7, CH * 2 + 1.1, -7)
   tarp.rotation.set(-0.55, 0.15, 0)
-  tarp.castShadow = true
   group.add(tarp)
 
-  // Distant crane silhouettes (non-colliding backdrop)
   const craneMat = new THREE.MeshStandardMaterial({ color: 0x5a6068, roughness: 0.9 })
   for (const x of [-38, 38]) {
     const legA = new THREE.Mesh(new THREE.BoxGeometry(0.7, 20, 0.7), craneMat)
@@ -272,14 +261,13 @@ export function buildContainerYardMap(): BuiltMap {
     group.add(cab)
   }
 
-  // Lighting — overcast port atmosphere
   group.add(new THREE.HemisphereLight(0xd0dae4, 0x4a5058, 1.05))
   group.add(new THREE.AmbientLight(0x98a8b8, 0.28))
 
   const sun = new THREE.DirectionalLight(0xfff4e4, 0.95)
   sun.position.set(-30, 45, 20)
   sun.castShadow = true
-  sun.shadow.mapSize.set(2048, 2048)
+  sun.shadow.mapSize.set(1024, 1024)
   sun.shadow.camera.near = 5
   sun.shadow.camera.far = 80
   sun.shadow.camera.left = -28

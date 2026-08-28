@@ -33,10 +33,13 @@ function countTriangles(root: THREE.Object3D): number {
   return Math.floor(n)
 }
 
-function asphaltMat(): THREE.MeshStandardMaterial {
+function asphaltMat(repeatX = 1, repeatY = 1): THREE.MeshStandardMaterial {
   const map = asphaltColorMap()
+  map.repeat.set(repeatX, repeatY)
   const rough = asphaltRoughnessMap()
+  rough.repeat.set(repeatX, repeatY)
   const normal = asphaltNormalMap()
+  normal.repeat.set(repeatX, repeatY)
   return new THREE.MeshStandardMaterial({
     map,
     roughnessMap: rough,
@@ -121,6 +124,46 @@ export function buildProceduralFloor(): FloorBuildResult {
   group.add(curb)
 
   return { group, source: 'procedural', triangleCount: countTriangles(group) }
+}
+
+/** Single ground slab for the playable map — avoids tiled z-fighting and GPU churn. */
+export function buildMapGround(width: number, depth: number): THREE.Group {
+  const group = new THREE.Group()
+  const T = 0.1
+  const mat = asphaltMat(width / FLOOR_TILE.width, depth / FLOOR_TILE.depth)
+  const puddle = puddleMaterial()
+
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(width, T, depth), mat)
+  slab.position.y = T / 2
+  slab.receiveShadow = true
+  group.add(slab)
+
+  const line = lineMat()
+  const addLine = (w: number, d: number, x: number, z: number) => {
+    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(w, d), line)
+    stripe.rotation.x = -Math.PI / 2
+    stripe.position.set(x, T + 0.004, z)
+    group.add(stripe)
+  }
+  for (let x = -18; x <= 18; x += 6) {
+    addLine(4.5, 0.14, x, -14.5)
+    addLine(4.5, 0.14, x, 14.5)
+  }
+
+  for (const [x, z, r] of [
+    [-8, 3, 1.2],
+    [5, -6, 1.0],
+    [12, 8, 1.1],
+    [-14, -4, 1.15],
+  ] as const) {
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(r, 16), puddle)
+    pool.rotation.x = -Math.PI / 2
+    pool.position.set(x, T + 0.006, z)
+    pool.scale.set(1.8, 1, 1.1)
+    group.add(pool)
+  }
+
+  return group
 }
 
 export async function buildFloor(): Promise<FloorBuildResult> {

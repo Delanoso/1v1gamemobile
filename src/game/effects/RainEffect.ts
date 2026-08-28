@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-const COUNT = 420
+const COUNT = 180
 
 export class RainEffect {
   readonly group = new THREE.Group()
