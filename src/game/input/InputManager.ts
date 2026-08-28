@@ -55,8 +55,8 @@ export class InputManager {
     lethal: false,
     tactical: false,
   }
-  /** One-frame taps from touch HUD (jump/reload/crouch miss a frame if only touchend fires). */
-  private jumpQueued = false
+  /** Touch taps can land between frames — keep jump queued briefly. */
+  private jumpQueuedFrames = 0
   private reloadQueued = false
   private crouchQueued = false
   /** ADS stays on until toggled off (touch HUD). */
@@ -103,7 +103,7 @@ export class InputManager {
   }
 
   queueJump(): void {
-    this.jumpQueued = true
+    this.jumpQueuedFrames = 4
   }
 
   queueReload(): void {
@@ -126,7 +126,7 @@ export class InputManager {
   resetTouchState(): void {
     this.touchMove = { x: 0, y: 0 }
     this.touchLook = { x: 0, y: 0 }
-    this.jumpQueued = false
+    this.jumpQueuedFrames = 0
     this.reloadQueued = false
     this.crouchQueued = false
     this.touchAdsOn = false
@@ -161,10 +161,14 @@ export class InputManager {
     this.mouseLook = { x: 0, y: 0 }
 
     const kb = this.keys
-    const jump = this.touchButtons.jump || pad.jump || kb.has('Space') || this.jumpQueued
+    const jump =
+      this.touchButtons.jump ||
+      pad.jump ||
+      kb.has('Space') ||
+      this.jumpQueuedFrames > 0
     const reload = this.touchButtons.reload || pad.reload || kb.has('KeyR') || this.reloadQueued
     const crouch = this.touchButtons.crouch || pad.crouch || kb.has('KeyC') || this.crouchQueued
-    this.jumpQueued = false
+    if (this.jumpQueuedFrames > 0) this.jumpQueuedFrames--
     this.reloadQueued = false
     this.crouchQueued = false
 

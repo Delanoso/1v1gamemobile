@@ -117,22 +117,21 @@ export class PlayerController {
 
     const ground = groundHeightAt(this.position.x, this.position.z, colliders, this.position.y)
 
-    if (this.grounded || this.position.y <= ground + 0.05) {
-      this.position.y = ground
-      this.velocityY = 0
-      this.grounded = true
-      if (input.jump && !this.jumpLatch && !this.crouching) {
-        this.velocityY = p.jumpSpeed
-        this.grounded = false
-        this.jumpLatch = true
-      }
-    } else {
+    if (!this.grounded) {
       this.velocityY -= p.gravity * dt
       this.position.y += this.velocityY * dt
       if (this.position.y <= ground) {
         this.position.y = ground
         this.velocityY = 0
         this.grounded = true
+      }
+    } else {
+      this.position.y = ground
+      this.velocityY = 0
+      if (input.jump && !this.jumpLatch && !this.crouching) {
+        this.velocityY = p.jumpSpeed
+        this.grounded = false
+        this.jumpLatch = true
       }
     }
     if (!input.jump) this.jumpLatch = false
