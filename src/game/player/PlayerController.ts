@@ -5,7 +5,7 @@ import {
   groundHeightAt,
   resolveCapsuleColliders,
   type Collider,
-} from '../maps/WarehouseMap'
+} from '../maps/collision'
 
 export class PlayerController {
   readonly camera: THREE.PerspectiveCamera

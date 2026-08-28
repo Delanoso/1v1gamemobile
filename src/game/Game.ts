@@ -3,7 +3,8 @@ import { GAME } from '../config/gameConfig'
 import { audio } from '../audio/AudioManager'
 import { InputManager } from './input/InputManager'
 import { TouchControls } from './input/TouchControls'
-import { buildWarehouseMap, type Collider } from './maps/WarehouseMap'
+import { buildContainerYardMap, type Collider } from './maps/ContainerYardMap'
+import { PostPipeline } from './rendering/PostPipeline'
 import { PlayerController } from './player/PlayerController'
 import { WeaponSystem, createMuzzleFlash } from './weapons/WeaponSystem'
 import { WeaponViewModel } from './weapons/ViewModel'
@@ -30,6 +31,7 @@ export class Game {
   private readonly tracerGroup = new THREE.Group()
   private readonly overlay: HTMLElement
   private readonly menuCam = new THREE.PerspectiveCamera(60, 1, 0.1, 200)
+  private post: PostPipeline | null = null
 
   private colliders: Collider[] = []
   private targets: RangeTarget[] = []
@@ -64,8 +66,8 @@ export class Game {
     this.renderer.toneMappingExposure = 1.3
     this.host.prepend(this.renderer.domElement)
 
-    this.scene.background = new THREE.Color(0x1c242c)
-    this.scene.fog = new THREE.Fog(0x1c242c, 45, 100)
+    this.scene.background = new THREE.Color(0x9aacbc)
+    this.scene.fog = new THREE.FogExp2(0x9aacbc, 0.018)
     this.scene.add(this.tracerGroup)
 
     this.muzzle = createMuzzleFlash()
@@ -100,7 +102,7 @@ export class Game {
   }
 
   private buildWorld(): void {
-    const map = buildWarehouseMap()
+    const map = buildContainerYardMap()
     this.scene.add(map.group)
     this.colliders = map.colliders
     this.spawnPoint.copy(map.spawns[0])
@@ -117,6 +119,13 @@ export class Game {
     }
 
     this.player.spawn(this.spawnPoint, this.spawnYaw)
+    this.post = new PostPipeline(
+      this.renderer,
+      this.scene,
+      this.player.camera,
+      window.innerWidth,
+      window.innerHeight,
+    )
   }
 
   private handleMenu(action: MenuAction): void {
@@ -132,13 +141,13 @@ export class Game {
     this.menu.setVisible(false)
     this.hud.setVisible(true)
     this.touch.setVisible(true)
-    this.hud.setMode('WAREHOUSE')
+    this.hud.setMode('CONTAINER YARD')
     this.weapon.reset()
     this.kills = 0
     this.reloadWasActive = false
     this.player.spawn(this.spawnPoint, this.spawnYaw)
     this.hud.setHealth(this.player.health)
-    this.hud.pushFeed('Warehouse live — test movement & gunfeel')
+    this.hud.pushFeed('Container yard live — Shipment-style layout')
     void audio.resume()
   }
 
@@ -149,6 +158,7 @@ export class Game {
     this.player.resize(w, h)
     this.menuCam.aspect = w / Math.max(1, h)
     this.menuCam.updateProjectionMatrix()
+    this.post?.resize(w, h)
   }
 
   private loop = (): void => {
@@ -163,7 +173,7 @@ export class Game {
         this.muzzleTimer -= dt
         this.muzzle.intensity = this.muzzleTimer > 0 ? 2.8 : 0
       }
-      this.renderer.render(this.scene, this.player.camera)
+      this.post?.render()
     } else {
       const t = this.clock.elapsedTime
       this.menuCam.position.set(Math.sin(t * 0.1) * 22, 8.5, Math.cos(t * 0.1) * 22)

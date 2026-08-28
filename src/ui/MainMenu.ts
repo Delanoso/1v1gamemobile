@@ -18,7 +18,7 @@ export class MainMenu {
         <div class="menu-actions">
           <button type="button" data-action="play" class="primary">Play</button>
         </div>
-        <p class="menu-note">Polishing gunfeel &amp; warehouse map. Multiplayer comes later.</p>
+        <p class="menu-note">Shipment-style container yard — polishing visuals first.</p>
       </div>
     `
     host.appendChild(this.root)
