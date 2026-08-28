@@ -5,16 +5,14 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { barrelZ, boxW, ringZ } from './WeaponGeometry'
+import { buildShotgunMeshes } from './ShotgunAsset'
 import {
   weaponBluedMat,
-  weaponBrassMat,
-  weaponHeatShieldMat,
   weaponLeatherMat,
   weaponMetalMat,
   weaponPolyMat,
   weaponRubberMat,
   weaponSuppressorMat,
-  weaponTapeMat,
   weaponWoodMat,
 } from './WeaponTextures'
 
@@ -68,44 +66,9 @@ function buildM4A1(add: Add): void {
   add(boxW(0.004, 0.02, 0.004, metal, 0, 0.08, -0.44))
 }
 
-/** Shotgun — receiver hub at z=0, depth 0.22. */
+/** Shotgun — see ShotgunAsset.ts */
 function buildShotgun(add: Add): void {
-  const metal = weaponMetalMat(1)
-  const dark = weaponBluedMat()
-  const wood = weaponWoodMat(2)
-  const shield = weaponHeatShieldMat()
-
-  add(boxW(0.09, 0.1, 0.22, dark, 0, 0.05, 0))
-  add(boxW(0.082, 0.11, 0.14, wood, 0, 0.05, 0.2))
-  add(boxW(0.078, 0.045, 0.16, wood, 0, 0.105, 0.34))
-  add(boxW(0.085, 0.12, 0.04, weaponRubberMat(), 0, 0.05, 0.5))
-  add(boxW(0.065, 0.035, 0.12, dark, 0, 0.125, 0.3))
-  add(boxW(0.082, 0.04, 0.08, weaponTapeMat(), 0, 0.04, 0.44))
-  add(boxW(0.05, 0.01, 0.06, weaponTapeMat(0x3a78d0), 0, 0.1, 0.16))
-
-  add(barrelZ(0.018, 0.018, 0.62, 14, metal, -0.36, 0.048))
-  add(barrelZ(0.014, 0.014, 0.58, 12, dark, -0.36, 0.012))
-  add(boxW(0.09, 0.075, 0.2, wood, 0, 0.018, -0.18))
-  for (let i = 0; i < 6; i++) {
-    add(boxW(0.088, 0.008, 0.024, weaponWoodMat(3), 0, 0.018, -0.24 + i * 0.032))
-  }
-
-  add(boxW(0.07, 0.05, 0.46, shield, 0, 0.062, -0.34))
-  for (let row = 0; row < 2; row++) {
-    for (let i = 0; i < 6; i++) {
-      add(boxW(0.02, 0.016, 0.032, dark, row === 0 ? -0.016 : 0.016, 0.088, -0.16 - i * 0.06))
-    }
-  }
-
-  add(boxW(0.016, 0.07, 0.12, metal, 0.054, 0.055, 0))
-  const shellColors = [0xc84838, 0xc84838, 0xd8d0c8, 0xd8d0c8]
-  for (let i = 0; i < 4; i++) {
-    add(boxW(0.016, 0.02, 0.044, weaponPolyMat(shellColors[i]), 0.062, 0.03 + i * 0.018, 0.01 - i * 0.024))
-    add(boxW(0.018, 0.022, 0.01, weaponBrassMat(), 0.062, 0.03 + i * 0.018, 0.048 - i * 0.024))
-  }
-
-  add(boxW(0.008, 0.034, 0.06, weaponPolyMat(0x1a1e22), 0.046, 0.062, 0.02))
-  add(boxW(0.03, 0.008, 0.04, weaponPolyMat(0x1a1c20), 0, 0.1, 0.06))
+  buildShotgunMeshes(add)
 }
 
 /** SVD DMR — receiver hub at z=0.06, depth 0.28. */

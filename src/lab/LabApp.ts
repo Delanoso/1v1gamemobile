@@ -47,7 +47,7 @@ export class LabApp {
   private barrelVariant: BarrelVariant = 'metal-dark'
   private crateVariant: CrateVariant = 'medium'
   private palletVariant: PalletVariant = 'standard'
-  private weaponVariant: WeaponVariant = 'm4a1'
+  private weaponVariant: WeaponVariant = 'shotgun'
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
@@ -383,10 +383,14 @@ export class LabApp {
         svd: 'DMR',
         ak74: 'AK-74',
       }
+      const shotgunNote =
+        'Procedural v1 — pump shotgun: wood stock/pump, cheek riser, vented heat shield, side saddle.'
       this.statusEl.textContent =
         result.source === 'glb'
           ? `Using imported ${variantNames[this.weaponVariant]} GLB.`
-          : `Procedural — connected blockout. Drop GLB at public/assets/weapons/ for reference quality.`
+          : this.weaponVariant === 'shotgun'
+            ? shotgunNote
+            : `Procedural blockout — drop GLB at public/assets/weapons/ for reference quality.`
     }
   }
 

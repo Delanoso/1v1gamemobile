@@ -80,12 +80,41 @@ export function weaponLeatherMat(color = 0x5a4030): THREE.MeshStandardMaterial {
 }
 
 export function weaponHeatShieldMat(): THREE.MeshStandardMaterial {
+  const { map, alphaMap } = heatShieldMaps()
   return new THREE.MeshStandardMaterial({
-    color: 0x6a727a,
+    map,
+    alphaMap,
+    transparent: true,
+    side: THREE.DoubleSide,
     metalness: 0.42,
     roughness: 0.4,
-    side: THREE.DoubleSide,
+    color: 0x9aa4ae,
   })
+}
+
+function heatShieldMaps(): { map: THREE.CanvasTexture; alphaMap: THREE.CanvasTexture } {
+  const [c, ctx] = canvas(128, 256)
+  const [a, actx] = canvas(128, 256)
+  ctx.fillStyle = '#6a727a'
+  ctx.fillRect(0, 0, 128, 256)
+  actx.fillStyle = '#ffffff'
+  actx.fillRect(0, 0, 128, 256)
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 8; col++) {
+      const x = 14 + col * 14
+      const y = row === 0 ? 60 : 140
+      ctx.fillStyle = '#3a4248'
+      ctx.fillRect(x, y, 9, 22)
+      actx.fillStyle = '#000000'
+      actx.fillRect(x, y, 9, 22)
+    }
+  }
+  const map = new THREE.CanvasTexture(c)
+  map.wrapS = map.wrapT = THREE.RepeatWrapping
+  map.colorSpace = THREE.SRGBColorSpace
+  const alphaMap = new THREE.CanvasTexture(a)
+  alphaMap.wrapS = alphaMap.wrapT = THREE.RepeatWrapping
+  return { map, alphaMap }
 }
 
 export function weaponSuppressorMat(heat = false): THREE.MeshStandardMaterial {
