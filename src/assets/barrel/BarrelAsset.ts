@@ -54,20 +54,70 @@ function ironHoopMat(): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color: 0x3a4048, metalness: 0.88, roughness: 0.42 })
 }
 
+/** Cylindrical sticker mesh that hugs the drum surface. */
+function curvedDecalGeometry(width: number, height: number, radius: number, segmentsU = 16): THREE.BufferGeometry {
+  const halfArc = width / (2 * radius)
+  const segmentsV = Math.max(2, Math.ceil(height / 0.08))
+  const positions: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+
+  for (let j = 0; j <= segmentsV; j++) {
+    const v = j / segmentsV
+    const y = (v - 0.5) * height
+    for (let i = 0; i <= segmentsU; i++) {
+      const u = i / segmentsU
+      const theta = (u - 0.5) * 2 * halfArc
+      positions.push(Math.sin(theta) * radius, y, Math.cos(theta) * radius)
+      uvs.push(u, 1 - v)
+    }
+  }
+
+  const cols = segmentsU + 1
+  for (let j = 0; j < segmentsV; j++) {
+    for (let i = 0; i < segmentsU; i++) {
+      const a = j * cols + i
+      const b = a + 1
+      const c = a + cols
+      const d = c + 1
+      indices.push(a, c, b, b, c, d)
+    }
+  }
+
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+  geo.setIndex(indices)
+  geo.computeVertexNormals()
+  return geo
+}
+
+/** Place a sticker decal wrapped onto the drum shell. Angle 0 = front (+Z). */
 function addDecal(
   addMesh: (m: THREE.Mesh) => void,
   texture: THREE.CanvasTexture,
-  w: number,
-  h: number,
-  x: number,
+  width: number,
+  height: number,
   y: number,
-  z: number,
+  angle = 0,
+  surfaceOffset = 0.004,
 ): void {
+  const { radius: R } = BARREL_DIMS
+  const stickerR = R + surfaceOffset
+  const segmentsU = Math.max(10, Math.ceil((width / stickerR) * 24))
   const decal = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, h),
-    new THREE.MeshStandardMaterial({ map: texture, roughness: 0.92, metalness: 0.05 }),
+    curvedDecalGeometry(width, height, stickerR, segmentsU),
+    new THREE.MeshStandardMaterial({
+      map: texture,
+      roughness: 0.92,
+      metalness: 0.05,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
+    }),
   )
-  decal.position.set(x, y, z)
+  decal.rotation.y = angle
+  decal.position.y = y
   addMesh(decal)
 }
 
@@ -90,7 +140,7 @@ function addMetalDrumBody(
 }
 
 function addMetalDarkBarrel(addMesh: (m: THREE.Mesh) => void): void {
-  const { radius: R, height: H } = BARREL_DIMS
+  const { height: H } = BARREL_DIMS
   const body = new THREE.MeshStandardMaterial({
     map: metalBodyTexture(),
     roughnessMap: barrelRoughnessMap(),
@@ -99,14 +149,14 @@ function addMetalDarkBarrel(addMesh: (m: THREE.Mesh) => void): void {
   })
   const band = new THREE.MeshStandardMaterial({ map: metalBandTexture(), metalness: 0.4, roughness: 0.68 })
   addMetalDrumBody(addMesh, body, band, [0.04, 0.22, 0.44, 0.66, 0.88])
-  addDecal(addMesh, skullDecalTexture(), 0.42, 0.42, 0, H * 0.48, R + 0.02)
+  addDecal(addMesh, skullDecalTexture(), 0.42, 0.42, H * 0.48)
   const bung = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 8), ironHoopMat())
   bung.position.set(0.08, H * 0.92, 0.06)
   addMesh(bung)
 }
 
 function addMetalGreenBarrel(addMesh: (m: THREE.Mesh) => void): void {
-  const { radius: R, height: H } = BARREL_DIMS
+  const { height: H } = BARREL_DIMS
   const body = new THREE.MeshStandardMaterial({
     map: greenWasteBodyTexture(),
     roughnessMap: barrelRoughnessMap(),
@@ -115,8 +165,8 @@ function addMetalGreenBarrel(addMesh: (m: THREE.Mesh) => void): void {
   })
   const rib = ironHoopMat()
   addMetalDrumBody(addMesh, body, rib, [0.33, 0.66])
-  addDecal(addMesh, biohazardDecalTexture(), 0.5, 0.5, 0, H * 0.5, R + 0.02)
-  addDecal(addMesh, toxicSkullDecalTexture(), 0.22, 0.22, R * 0.55, H * 0.18, R * 0.65)
+  addDecal(addMesh, biohazardDecalTexture(), 0.5, 0.5, H * 0.5)
+  addDecal(addMesh, toxicSkullDecalTexture(), 0.22, 0.22, H * 0.18, Math.atan2(0.55, 0.65))
 }
 
 function addMetalYellowBarrel(addMesh: (m: THREE.Mesh) => void): void {
@@ -129,8 +179,8 @@ function addMetalYellowBarrel(addMesh: (m: THREE.Mesh) => void): void {
   })
   const rib = ironHoopMat()
   addMetalDrumBody(addMesh, body, rib, [0.35, 0.68])
-  addDecal(addMesh, toxicSkullDecalTexture(), 0.28, 0.28, 0, H * 0.72, R + 0.02)
-  addDecal(addMesh, radiationDecalTexture(), 0.38, 0.38, 0, H * 0.32, R + 0.02)
+  addDecal(addMesh, toxicSkullDecalTexture(), 0.28, 0.28, H * 0.72)
+  addDecal(addMesh, radiationDecalTexture(), 0.38, 0.38, H * 0.32)
   const lid = new THREE.Mesh(
     new THREE.CylinderGeometry(R * 0.94, R * 0.96, 0.04, 20),
     new THREE.MeshStandardMaterial({ map: rustyLidTexture(), metalness: 0.5, roughness: 0.7 }),
