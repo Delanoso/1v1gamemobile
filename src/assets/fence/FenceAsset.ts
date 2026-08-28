@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { chainLinkAlphaMap, chainLinkColorMap, chainLinkRoughnessMap } from './FenceTextures'
+import { chainLinkSurfaceMap } from './FenceTextures'
 
 export const FENCE_PANEL = { width: 3.6, height: 2.8 } as const
 
@@ -32,24 +32,63 @@ function steelMat(): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color: 0x9098a0, metalness: 0.88, roughness: 0.32 })
 }
 
-function chainMat(repeatX: number, repeatY: number): THREE.MeshStandardMaterial {
-  const alpha = chainLinkAlphaMap()
-  const map = chainLinkColorMap()
-  const rough = chainLinkRoughnessMap()
-  alpha.repeat.set(repeatX, repeatY)
-  map.repeat.set(repeatX, repeatY)
-  rough.repeat.set(repeatX, repeatY)
-  return new THREE.MeshStandardMaterial({
-    map,
-    alphaMap: alpha,
-    roughnessMap: rough,
-    transparent: true,
-    opacity: 0.94,
-    metalness: 0.78,
-    roughness: 0.38,
+function wireMat(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: 0x8a929a, metalness: 0.82, roughness: 0.36 })
+}
+
+function chainMeshMat(repeatX: number, repeatY: number): THREE.MeshBasicMaterial {
+  const surface = chainLinkSurfaceMap()
+  surface.repeat.set(repeatX, repeatY)
+  return new THREE.MeshBasicMaterial({
+    map: surface,
+    alphaMap: surface,
     side: THREE.DoubleSide,
-    alphaTest: 0.4,
+    alphaTest: 0.25,
+    transparent: false,
   })
+}
+
+/** Short wire segments only — every endpoint stays inside the panel rect. */
+function addChainLinkLattice(
+  W: number,
+  H: number,
+  cx: number,
+  cy: number,
+  wire: THREE.MeshStandardMaterial,
+  addMesh: (m: THREE.Mesh) => void,
+): void {
+  const spacing = 0.16
+  const wireR = 0.007
+  const left = cx - W / 2
+  const right = cx + W / 2
+  const bottom = cy - H / 2
+  const top = cy + H / 2
+  const up = new THREE.Vector3(0, 1, 0)
+
+  const inside = (x: number, y: number) => x >= left && x <= right && y >= bottom && y <= top
+
+  const addSegment = (x1: number, y1: number, x2: number, y2: number) => {
+    if (!inside(x1, y1) || !inside(x2, y2)) return
+    const len = Math.hypot(x2 - x1, y2 - y1)
+    if (len < 0.02) return
+    const strand = new THREE.Mesh(new THREE.CylinderGeometry(wireR, wireR, len, 5), wire)
+    const dir = new THREE.Vector3(x2 - x1, y2 - y1, 0).normalize()
+    strand.position.set((x1 + x2) / 2, (y1 + y2) / 2, 0.015)
+    strand.quaternion.setFromUnitVectors(up, dir)
+    addMesh(strand)
+  }
+
+  const half = spacing * 0.5
+  for (let y = bottom; y < top - half; y += half) {
+    const row = Math.round((y - bottom) / half)
+    const stagger = (row % 2) * half
+    for (let x = left + stagger; x < right - half; x += spacing) {
+      addSegment(x, y, x + half, y + half)
+      addSegment(x + half, y, x + spacing, y + half)
+      addSegment(x + half, y + half, x + spacing, y)
+      addSegment(x, y + half, x + half, y + spacing)
+    }
+  }
 }
 
 function addYBracket(x: number, y: number, steel: THREE.MeshStandardMaterial, addMesh: (m: THREE.Mesh) => void): void {
@@ -132,6 +171,7 @@ export function buildProceduralFence(): FenceBuildResult {
   const group = new THREE.Group()
   const { width: W, height: H } = FENCE_PANEL
   const steel = steelMat()
+  const wire = wireMat()
   const postR = 0.04
   const railY = H
 
@@ -155,11 +195,14 @@ export function buildProceduralFence(): FenceBuildResult {
   topRail.position.set(0, railY, 0)
   addMesh(topRail)
 
-  // Chain-link mesh (ground to top rail)
+  // Chain-link fill — 3D wire diamonds clipped to panel + faint texture backing
+  const meshW = W - postR * 2.4
   const meshH = H - 0.14
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(W - postR * 2.4, meshH), chainMat(8, 7))
-  mesh.position.set(0, meshH / 2 + 0.02, 0)
-  addMesh(mesh)
+  const meshY = meshH / 2 + 0.02
+  const backing = new THREE.Mesh(new THREE.PlaneGeometry(meshW, meshH), chainMeshMat(10, 8))
+  backing.position.set(0, meshY, 0.005)
+  addMesh(backing)
+  addChainLinkLattice(meshW, meshH, 0, meshY, wire, addMesh)
 
   // Concertina razor wire along top
   addConcertinaWire(W, railY, steel, addMesh)
