@@ -377,12 +377,6 @@ export class LabApp {
       this.studio.setAsset(result.group, 'weapon')
       this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
       this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
-      const variantLabels: Record<WeaponVariant, string> = {
-        m4a1: 'assault rifle — rails, carry handle, STANAG mag (in-game viewmodel)',
-        shotgun: 'pump shotgun — wood stock/pump, vented heat shield, side saddle',
-        svd: 'marksman rifle — wood thumbhole stock, PSO-style scope',
-        ak74: 'tactical AK — skeleton stock, suppressor, vertical grip',
-      }
       const variantNames: Record<WeaponVariant, string> = {
         m4a1: 'M4A1',
         shotgun: 'Shotgun',
@@ -392,7 +386,7 @@ export class LabApp {
       this.statusEl.textContent =
         result.source === 'glb'
           ? `Using imported ${variantNames[this.weaponVariant]} GLB.`
-          : `Procedural v3 — ${variantLabels[this.weaponVariant]}. Drop GLB for reference fidelity.`
+          : `Procedural — connected blockout. Drop GLB at public/assets/weapons/ for reference quality.`
     }
   }
 

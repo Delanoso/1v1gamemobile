@@ -1,28 +1,13 @@
 /**
- * FPS weapon meshes — lab hero + in-game viewmodel source of truth.
- * Coordinates: +Z rear (stock), -Z front (muzzle), +Y up.
+ * FPS weapon meshes — lab hero + in-game viewmodel.
+ * +Z rear, -Z front. All parts share edge junctions on the receiver hub.
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import {
-  barrelZ,
-  boxW,
-  buildPsoScope,
-  flashHider,
-  handguardVents,
-  pumpGrooves,
-  revolveZ,
-  ribbedSuppressor,
-  ringZ,
-  triggerGuard,
-  tubePath,
-  ventedHeatShield,
-  waffleMag,
-} from './WeaponGeometry'
+import { barrelZ, boxW, ringZ } from './WeaponGeometry'
 import {
   weaponBluedMat,
   weaponBrassMat,
-  weaponGlassMat,
   weaponHeatShieldMat,
   weaponLeatherMat,
   weaponMetalMat,
@@ -62,103 +47,68 @@ function countTriangles(root: THREE.Object3D): number {
 
 type Add = (mesh: THREE.Mesh) => void
 
+/** M4A1 — receiver hub at z=0, depth 0.24. */
 function buildM4A1(add: Add): void {
   const metal = weaponMetalMat()
   const dark = weaponBluedMat()
   const poly = weaponPolyMat()
 
-  add(boxW(0.07, 0.055, 0.2, dark, 0, 0.04, -0.02))
-  add(boxW(0.065, 0.05, 0.18, metal, 0, 0.068, -0.04))
-  add(boxW(0.06, 0.035, 0.16, dark, 0, 0.028, -0.03))
-
-  add(revolveZ(
-    [
-      [-0.12, 0.028],
-      [-0.28, 0.032],
-      [-0.34, 0.028],
-    ],
-    14,
-    dark,
-  ))
-
-  add(barrelZ(0.011, 0.011, 0.38, 12, metal, -0.36, 0.055))
-  add(barrelZ(0.016, 0.014, 0.05, 10, dark, -0.56, 0.055))
-  add(ringZ(0.02, 0.004, metal, -0.18, 0.055))
-
-  add(boxW(0.055, 0.065, 0.26, poly, 0, 0.02, -0.16))
-  for (let i = 0; i < 8; i++) {
-    add(boxW(0.032, 0.01, 0.024, metal, 0, 0.072, -0.06 - i * 0.03))
+  add(boxW(0.07, 0.09, 0.24, dark, 0, 0.04, 0))
+  add(boxW(0.055, 0.065, 0.26, poly, 0, 0.02, -0.14))
+  add(barrelZ(0.012, 0.012, 0.38, 12, metal, -0.32, 0.05))
+  add(barrelZ(0.017, 0.015, 0.05, 10, dark, -0.53, 0.05))
+  add(boxW(0.05, 0.065, 0.18, poly, 0, 0.035, 0.21))
+  add(barrelZ(0.014, 0.014, 0.14, 8, metal, 0.19, 0.04))
+  add(boxW(0.042, 0.1, 0.06, poly, 0, -0.055, 0.06))
+  add(boxW(0.038, 0.12, 0.07, dark, 0, -0.1, -0.02))
+  add(boxW(0.04, 0.05, 0.1, metal, 0, 0.09, -0.02))
+  for (let i = 0; i < 6; i++) {
+    add(boxW(0.032, 0.01, 0.022, metal, 0, 0.072, -0.06 - i * 0.028))
   }
-
-  add(boxW(0.04, 0.05, 0.12, metal, 0, 0.095, -0.04))
-  add(boxW(0.004, 0.022, 0.004, metal, 0, 0.085, -0.48))
-  add(boxW(0.018, 0.028, 0.012, metal, 0, 0.1, -0.02))
-
-  add(boxW(0.042, 0.11, 0.065, poly, 0, -0.06, 0.06))
-  add(boxW(0.04, 0.13, 0.075, dark, 0, -0.12, -0.02))
-  add(boxW(0.05, 0.07, 0.2, poly, 0, 0.02, 0.24))
-  add(barrelZ(0.013, 0.013, 0.16, 8, metal, 0.36, 0.04))
-
-  add(triggerGuard(dark, 0.04))
-  add(boxW(0.006, 0.022, 0.012, metal, 0, -0.05, 0.05))
-  add(boxW(0.012, 0.008, 0.04, metal, 0.04, 0.05, -0.02))
-  add(boxW(0.008, 0.012, 0.03, metal, 0, 0.05, 0.1))
+  add(boxW(0.004, 0.02, 0.004, metal, 0, 0.08, -0.44))
 }
 
+/** Shotgun — receiver hub at z=0, depth 0.22. */
 function buildShotgun(add: Add): void {
   const metal = weaponMetalMat(1)
   const dark = weaponBluedMat()
   const wood = weaponWoodMat(2)
-  const woodDark = weaponWoodMat(3)
   const shield = weaponHeatShieldMat()
 
-  // Receiver z: -0.11 … +0.11
   add(boxW(0.09, 0.1, 0.22, dark, 0, 0.05, 0))
-  add(boxW(0.008, 0.038, 0.07, weaponPolyMat(0x0a0c10), 0.046, 0.065, 0.02))
-  add(boxW(0.006, 0.028, 0.04, metal, 0.042, 0.062, 0.02))
-  add(boxW(0.05, 0.008, 0.08, weaponPolyMat(0x0a0c10), 0, 0.018, 0))
-  add(boxW(0.03, 0.008, 0.04, weaponPolyMat(0x1a1c20), 0, 0.1, 0.06))
-  add(boxW(0.02, 0.018, 0.012, metal, 0, 0.1, 0.02))
-  add(triggerGuard(dark, 0.02, 1.15))
-  add(boxW(0.006, 0.024, 0.01, metal, 0, -0.02, 0.02))
+  add(boxW(0.082, 0.11, 0.14, wood, 0, 0.05, 0.2))
+  add(boxW(0.078, 0.045, 0.16, wood, 0, 0.105, 0.34))
+  add(boxW(0.085, 0.12, 0.04, weaponRubberMat(), 0, 0.05, 0.5))
+  add(boxW(0.065, 0.035, 0.12, dark, 0, 0.125, 0.3))
+  add(boxW(0.082, 0.04, 0.08, weaponTapeMat(), 0, 0.04, 0.44))
+  add(boxW(0.05, 0.01, 0.06, weaponTapeMat(0x3a78d0), 0, 0.1, 0.16))
 
-  // Stock z: +0.11 … +0.58
-  add(boxW(0.082, 0.11, 0.14, wood, 0, 0.05, 0.48))
-  add(boxW(0.078, 0.045, 0.18, wood, 0, 0.105, 0.34))
-  add(boxW(0.08, 0.085, 0.1, wood, 0, 0.045, 0.2))
-  add(boxW(0.085, 0.12, 0.04, weaponRubberMat(), 0, 0.05, 0.56))
-  add(boxW(0.065, 0.035, 0.14, dark, 0, 0.125, 0.3))
-  for (const x of [-0.024, 0.024]) {
-    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.018, 8), metal)
-    knob.position.set(x, 0.14, 0.3)
-    add(knob)
-  }
-  add(boxW(0.082, 0.04, 0.1, weaponTapeMat(), 0, 0.04, 0.46))
-  add(boxW(0.05, 0.01, 0.07, weaponTapeMat(0x2a68c8), 0, 0.1, 0.18))
-
-  // Barrels z: -0.7 … -0.06
-  add(barrelZ(0.017, 0.017, 0.64, 14, metal, -0.38, 0.048))
-  add(barrelZ(0.013, 0.013, 0.6, 12, dark, -0.38, 0.012))
-  for (const z of [-0.06, -0.3, -0.56]) add(ringZ(0.022, 0.004, metal, z, 0.03))
-
-  // Pump wraps tubes z: -0.28 … -0.08
+  add(barrelZ(0.018, 0.018, 0.62, 14, metal, -0.36, 0.048))
+  add(barrelZ(0.014, 0.014, 0.58, 12, dark, -0.36, 0.012))
   add(boxW(0.09, 0.075, 0.2, wood, 0, 0.018, -0.18))
-  pumpGrooves(add, 8, -0.24, 0.022, woodDark, 0.018)
-  add(barrelZ(0.008, 0.008, 0.1, 6, metal, -0.06, 0.012))
-  add(barrelZ(0.008, 0.008, 0.1, 6, metal, -0.06, 0.048))
+  for (let i = 0; i < 6; i++) {
+    add(boxW(0.088, 0.008, 0.024, weaponWoodMat(3), 0, 0.018, -0.24 + i * 0.032))
+  }
 
-  add(ventedHeatShield(0.48, 0.038, shield, -0.34, 0.062))
-  add(new THREE.Mesh(new THREE.SphereGeometry(0.006, 8, 8), metal).translateY(0.072).translateZ(-0.68) as THREE.Mesh)
-  add(barrelZ(0.018, 0.016, 0.03, 10, metal, -0.66, 0.012))
+  add(boxW(0.07, 0.05, 0.46, shield, 0, 0.062, -0.34))
+  for (let row = 0; row < 2; row++) {
+    for (let i = 0; i < 6; i++) {
+      add(boxW(0.02, 0.016, 0.032, dark, row === 0 ? -0.016 : 0.016, 0.088, -0.16 - i * 0.06))
+    }
+  }
 
-  add(boxW(0.016, 0.075, 0.13, metal, 0.054, 0.055, 0))
+  add(boxW(0.016, 0.07, 0.12, metal, 0.054, 0.055, 0))
   const shellColors = [0xc84838, 0xc84838, 0xd8d0c8, 0xd8d0c8]
   for (let i = 0; i < 4; i++) {
-    add(boxW(0.018, 0.022, 0.048, weaponPolyMat(shellColors[i]), 0.064, 0.03 + i * 0.02, 0.02 - i * 0.026))
-    add(boxW(0.02, 0.024, 0.012, weaponBrassMat(), 0.064, 0.03 + i * 0.02, 0.054 - i * 0.026))
+    add(boxW(0.016, 0.02, 0.044, weaponPolyMat(shellColors[i]), 0.062, 0.03 + i * 0.018, 0.01 - i * 0.024))
+    add(boxW(0.018, 0.022, 0.01, weaponBrassMat(), 0.062, 0.03 + i * 0.018, 0.048 - i * 0.024))
   }
+
+  add(boxW(0.008, 0.034, 0.06, weaponPolyMat(0x1a1e22), 0.046, 0.062, 0.02))
+  add(boxW(0.03, 0.008, 0.04, weaponPolyMat(0x1a1c20), 0, 0.1, 0.06))
 }
 
+/** SVD DMR — receiver hub at z=0.06, depth 0.28. */
 function buildSvd(add: Add): void {
   const metal = weaponMetalMat()
   const dark = weaponBluedMat()
@@ -166,95 +116,62 @@ function buildSvd(add: Add): void {
   const poly = weaponPolyMat()
   const leather = weaponLeatherMat()
 
-  // Thumbhole stock — layered wood
-  add(boxW(0.1, 0.14, 0.34, wood, 0, 0.05, 0.4))
-  add(boxW(0.09, 0.06, 0.14, wood, 0, 0.02, 0.26))
-  add(boxW(0.08, 0.1, 0.12, wood, 0, -0.04, 0.24))
-  add(boxW(0.088, 0.04, 0.16, leather, 0, 0.12, 0.34))
-  add(boxW(0.1, 0.12, 0.02, weaponRubberMat(0x2a2420), 0, 0.05, 0.56))
-
   add(boxW(0.08, 0.1, 0.28, dark, 0, 0.05, 0.06))
-  add(boxW(0.076, 0.012, 0.18, metal, 0, 0.1, -0.02))
+  add(boxW(0.1, 0.14, 0.32, wood, 0, 0.05, 0.38))
+  add(boxW(0.08, 0.1, 0.12, wood, 0, -0.04, 0.26))
+  add(boxW(0.088, 0.04, 0.14, leather, 0, 0.12, 0.34))
+  add(boxW(0.1, 0.12, 0.02, weaponRubberMat(0x2a2420), 0, 0.05, 0.54))
+
   add(boxW(0.085, 0.09, 0.34, poly, 0, 0.03, -0.12))
-
-  handguardVents(add, 3, -0.04, 0.1, weaponPolyMat(0x0e1014))
-  for (let i = 0; i < 5; i++) {
-    add(boxW(0.07, 0.01, 0.018, weaponPolyMat(0x222830), 0, -0.02, -0.24 + i * 0.06))
-  }
-  for (let i = 0; i < 4; i++) {
-    add(boxW(0.006, 0.04, 0.02, weaponPolyMat(0x1a1e22), 0, -0.01, -0.22 + i * 0.07))
-  }
-
-  add(barrelZ(0.01, 0.01, 0.7, 12, metal, -0.48, 0.052))
-  add(boxW(0.03, 0.025, 0.04, metal, 0, 0.06, -0.28))
-  add(boxW(0.012, 0.028, 0.008, metal, 0, 0.075, -0.72))
-  add(boxW(0.018, 0.012, 0.012, metal, 0, 0.083, -0.72))
-  flashHider(add, dark, -0.86, 0.052)
-
-  add(boxW(0.045, 0.1, 0.12, metal, 0, -0.08, 0.05))
   for (let i = 0; i < 3; i++) {
-    add(boxW(0.046, 0.008, 0.02, weaponMetalMat(1), 0, -0.06 + i * 0.028, 0.06))
+    for (const x of [-0.044, 0.044]) {
+      add(boxW(0.006, 0.048, 0.068, weaponPolyMat(0x1a1e22), x, 0.03, -0.04 - i * 0.1))
+    }
   }
 
-  add(boxW(0.03, 0.006, 0.05, metal, -0.042, 0.06, 0.06))
-  add(boxW(0.008, 0.02, 0.06, metal, 0.042, 0.085, -0.04))
-  add(triggerGuard(dark, 0.05, 1.1))
-  add(boxW(0.006, 0.022, 0.01, metal, 0, -0.04, 0.05))
+  add(barrelZ(0.011, 0.011, 0.7, 12, metal, -0.46, 0.05))
+  add(barrelZ(0.016, 0.014, 0.07, 10, dark, -0.84, 0.05))
+  add(boxW(0.045, 0.1, 0.11, metal, 0, -0.08, 0.1))
+  for (let i = 0; i < 3; i++) {
+    add(boxW(0.046, 0.007, 0.018, weaponMetalMat(1), 0, -0.06 + i * 0.026, 0.1))
+  }
 
-  buildPsoScope(add, { body: dark, metal, rubber: weaponRubberMat(), glass: weaponGlassMat() })
+  add(boxW(0.03, 0.05, 0.1, metal, 0.056, 0.08, 0.08))
+  add(boxW(0.26, 0.044, 0.044, dark, 0.2, 0.1, 0.08))
+  add(boxW(0.05, 0.05, 0.05, dark, 0.34, 0.1, 0.08))
+  add(boxW(0.04, 0.04, 0.04, weaponRubberMat(), 0.08, 0.1, 0.08))
 }
 
+/** AK-74 tactical — receiver hub at z=0.04. */
 function buildAk74(add: Add): void {
   const dark = weaponBluedMat()
   const metal = weaponMetalMat()
   const poly = weaponPolyMat()
+  const suppressor = weaponSuppressorMat()
+  const heat = weaponSuppressorMat(true)
 
-  add(boxW(0.08, 0.1, 0.26, dark, 0, 0.05, 0))
-  add(boxW(0.008, 0.032, 0.06, weaponPolyMat(0x0a0c10), 0.04, 0.065, 0))
-  add(boxW(0.01, 0.018, 0.05, metal, 0.04, 0.085, -0.02))
-
+  add(boxW(0.08, 0.1, 0.26, dark, 0, 0.05, 0.04))
   add(boxW(0.085, 0.085, 0.22, poly, 0, 0.03, -0.14))
-  handguardVents(add, 2, -0.1, 0.08, weaponPolyMat(0x0e1014))
-  add(boxW(0.035, 0.028, 0.048, poly, 0.04, 0.07, -0.08))
+  add(boxW(0.044, 0.1, 0.06, poly, 0, -0.08, -0.1))
+  add(boxW(0.05, 0.12, 0.1, metal, 0, -0.1, 0.04))
 
-  add(boxW(0.044, 0.1, 0.1, poly, 0, -0.08, -0.1))
-  add(boxW(0.05, 0.12, 0.1, metal, 0, -0.1, 0.02))
-  for (let i = 0; i < 3; i++) {
-    add(boxW(0.051, 0.006, 0.02, weaponMetalMat(1), 0, -0.06 + i * 0.03, 0.03))
+  add(barrelZ(0.038, 0.038, 0.42, 14, suppressor, -0.4, 0.048))
+  add(barrelZ(0.034, 0.038, 0.08, 12, heat, -0.64, 0.048))
+  for (let i = 0; i < 14; i++) {
+    add(ringZ(0.039, 0.002, dark, -0.2 - i * 0.028, 0.048))
   }
-  waffleMag(add, weaponPolyMat(0x1e2428), 1, 0.03, -0.1)
-  waffleMag(add, weaponPolyMat(0x1e2428), -1, 0.03, -0.1)
 
-  ribbedSuppressor(
-    add,
-    { body: weaponSuppressorMat(), rib: dark, heat: weaponSuppressorMat(true) },
-    -0.42,
-    0.048,
-    0.44,
-    0.038,
-    18,
-  )
-  add(ringZ(0.042, 0.006, metal, -0.18, 0.048))
-
-  add(boxW(0.042, 0.11, 0.065, poly, 0, -0.06, 0.08))
-  add(triggerGuard(dark, 0.04, 1.05))
-  add(boxW(0.006, 0.02, 0.01, metal, 0, -0.04, 0.05))
-
-  // Skeleton stock — tubes bolted to receiver at z=0.06
-  add(tubePath([new THREE.Vector3(0, 0.1, 0.11), new THREE.Vector3(0, 0.1, 0.22), new THREE.Vector3(0, 0.08, 0.42)], 0.012, metal))
-  add(tubePath([new THREE.Vector3(0, 0.04, 0.11), new THREE.Vector3(0, 0.03, 0.22), new THREE.Vector3(0, 0.02, 0.42)], 0.01, metal))
-  for (const z of [0.26, 0.34]) {
-    add(tubePath([new THREE.Vector3(0, 0.03, z), new THREE.Vector3(0, 0.1, z)], 0.008, metal))
-  }
+  add(boxW(0.042, 0.1, 0.06, poly, 0, -0.055, 0.1))
+  add(boxW(0.03, 0.04, 0.18, metal, 0, 0.1, 0.24))
+  add(boxW(0.03, 0.035, 0.18, metal, 0, 0.035, 0.24))
+  add(boxW(0.02, 0.065, 0.02, metal, 0, 0.068, 0.3))
+  add(boxW(0.02, 0.065, 0.02, metal, 0, 0.032, 0.3))
   add(boxW(0.048, 0.05, 0.1, poly, 0, 0.12, 0.3))
   add(boxW(0.058, 0.1, 0.04, weaponRubberMat(), 0, 0.05, 0.42))
 
-  add(boxW(0.02, 0.04, 0.08, metal, 0.05, 0.13, 0.06))
-  add(boxW(0.04, 0.03, 0.07, metal, 0.05, 0.15, 0.06))
-  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.008, 8), weaponGlassMat())
-  lens.position.set(0.06, 0.07, -0.106)
-  lens.rotation.y = Math.PI / 2
-  add(lens)
+  add(boxW(0.02, 0.04, 0.07, metal, 0.05, 0.13, 0.08))
+  add(boxW(0.038, 0.028, 0.05, poly, 0.04, 0.07, -0.08))
+  add(boxW(0.04, 0.03, 0.06, metal, 0.05, 0.15, 0.08))
 }
 
 export function buildProceduralWeapon(variant: WeaponVariant = 'm4a1'): WeaponBuildResult {

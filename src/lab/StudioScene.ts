@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 
 export type StudioViewMode = 'prop' | 'ground' | 'weapon'
 
@@ -44,6 +45,10 @@ export class StudioScene {
     this.scene.add(grid)
 
     this.scene.add(this.pivot)
+
+    const pmrem = new THREE.PMREMGenerator(this.renderer)
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+    pmrem.dispose()
 
     // Studio lights — bright overcast yard so props read on iPad
     this.scene.add(new THREE.HemisphereLight(0xe8eef4, 0x8898a8, 0.95))
