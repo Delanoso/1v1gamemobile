@@ -7,9 +7,154 @@ function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContex
   return [c, c.getContext('2d')!]
 }
 
-export type BarrelType = 'metal' | 'wood'
+export type BarrelVariant = 'metal-dark' | 'metal-green' | 'metal-yellow' | 'wood'
 
-/** Dark industrial metal with subtle wear. */
+/** @deprecated Use BarrelVariant */
+export type BarrelType = BarrelVariant
+
+/** Weathered painted metal drum body. */
+export function hazardBodyTexture(base: string, accent: string): THREE.CanvasTexture {
+  const [c, ctx] = canvas(512, 512)
+  ctx.fillStyle = base
+  ctx.fillRect(0, 0, 512, 512)
+  // Vertical rust streaks
+  for (let i = 0; i < 14; i++) {
+    const x = 30 + Math.random() * 450
+    const grad = ctx.createLinearGradient(x, 0, x + 20, 512)
+    grad.addColorStop(0, 'rgba(80,45,25,0)')
+    grad.addColorStop(0.5, 'rgba(90,50,28,0.45)')
+    grad.addColorStop(1, 'rgba(70,40,22,0.15)')
+    ctx.fillStyle = grad
+    ctx.fillRect(x, 0, 22, 512)
+  }
+  // Paint chips
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = `rgba(30,28,26,${0.1 + Math.random() * 0.2})`
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 8 + Math.random() * 30, 3 + Math.random() * 8)
+  }
+  // Horizontal rib shading
+  for (const y of [170, 340]) {
+    ctx.fillStyle = accent
+    ctx.globalAlpha = 0.25
+    ctx.fillRect(0, y, 512, 14)
+    ctx.globalAlpha = 1
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(1, 1)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+export function greenWasteBodyTexture(): THREE.CanvasTexture {
+  const tex = hazardBodyTexture('#6ab828', '#5a9a20')
+  const ctx = (tex.image as HTMLCanvasElement).getContext('2d')!
+  // Waste stencil text band
+  ctx.fillStyle = '#1a1c20'
+  ctx.font = 'bold 38px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText('WASTE - DO NOT OPEN!', 256, 470)
+  ctx.fillText('WASTE - DO NOT OPEN!', 256, 60)
+  tex.needsUpdate = true
+  return tex
+}
+
+export function yellowHazardBodyTexture(): THREE.CanvasTexture {
+  return hazardBodyTexture('#d4b820', '#c0a418')
+}
+
+export function biohazardDecalTexture(): THREE.CanvasTexture {
+  const [c, ctx] = canvas(256, 256)
+  ctx.fillStyle = '#b82830'
+  ctx.beginPath()
+  ctx.arc(128, 128, 118, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#101010'
+  // Biohazard trefoil
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 - Math.PI / 2
+    const cx = 128 + Math.cos(a) * 38
+    const cy = 128 + Math.sin(a) * 38
+    ctx.beginPath()
+    ctx.arc(cx, cy, 36, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.beginPath()
+  ctx.arc(128, 128, 18, 0, Math.PI * 2)
+  ctx.fill()
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+export function radiationDecalTexture(): THREE.CanvasTexture {
+  const [c, ctx] = canvas(256, 256)
+  ctx.fillStyle = '#101010'
+  ctx.beginPath()
+  ctx.moveTo(128, 24)
+  ctx.lineTo(232, 208)
+  ctx.lineTo(24, 208)
+  ctx.closePath()
+  ctx.fill()
+  ctx.fillStyle = '#e8e8e8'
+  // Trefoil blades
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 - Math.PI / 2
+    ctx.save()
+    ctx.translate(128, 138)
+    ctx.rotate(a)
+    ctx.fillRect(-14, -70, 28, 52)
+    ctx.beginPath()
+    ctx.arc(0, -70, 22, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+  ctx.beginPath()
+  ctx.arc(128, 138, 16, 0, Math.PI * 2)
+  ctx.fillStyle = '#101010'
+  ctx.fill()
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+export function toxicSkullDecalTexture(): THREE.CanvasTexture {
+  const [c, ctx] = canvas(256, 256)
+  ctx.fillStyle = '#101010'
+  ctx.beginPath()
+  ctx.moveTo(128, 24)
+  ctx.lineTo(232, 208)
+  ctx.lineTo(24, 208)
+  ctx.closePath()
+  ctx.fill()
+  ctx.fillStyle = '#e8e8e8'
+  ctx.beginPath()
+  ctx.ellipse(128, 118, 36, 42, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#101010'
+  ctx.beginPath()
+  ctx.ellipse(114, 110, 10, 14, 0, 0, Math.PI * 2)
+  ctx.ellipse(142, 110, 10, 14, 0, 0, Math.PI * 2)
+  ctx.fill()
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+export function rustyLidTexture(): THREE.CanvasTexture {
+  const [c, ctx] = canvas(256, 256)
+  ctx.fillStyle = '#8a9098'
+  ctx.fillRect(0, 0, 256, 256)
+  const grad = ctx.createRadialGradient(140, 120, 10, 128, 128, 120)
+  grad.addColorStop(0, 'rgba(70,40,22,0.85)')
+  grad.addColorStop(1, 'rgba(90,50,28,0.2)')
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, 256, 256)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
 export function metalBodyTexture(): THREE.CanvasTexture {
   const [c, ctx] = canvas(512, 512)
   ctx.fillStyle = '#2e3238'

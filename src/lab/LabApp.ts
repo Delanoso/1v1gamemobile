@@ -4,7 +4,7 @@ import { StudioScene } from './StudioScene'
 import { buildContainer } from '../assets/container/ContainerAsset'
 import { buildFloor } from '../assets/floor/FloorAsset'
 import { buildFence } from '../assets/fence/FenceAsset'
-import { buildBarrel, type BarrelType } from '../assets/barrel/BarrelAsset'
+import { buildBarrel, type BarrelVariant } from '../assets/barrel/BarrelAsset'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
 export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel'
@@ -20,7 +20,8 @@ const GLB_HINTS: Partial<Record<LabAsset, string>> = {
   container: 'public/assets/maps/container-yard/container.glb',
   floor: 'public/assets/maps/container-yard/floor.glb',
   fence: 'public/assets/maps/container-yard/fence.glb',
-  barrel: 'public/assets/maps/container-yard/barrel-metal.glb · barrel-wood.glb',
+  barrel:
+    'public/assets/maps/container-yard/barrel-metal.glb · barrel-hazard-green.glb · barrel-hazard-yellow.glb · barrel-wood.glb',
 }
 
 export class LabApp {
@@ -32,7 +33,7 @@ export class LabApp {
   private readonly hintEl: HTMLElement
   private asset: LabAsset = 'barrel'
   private containerColor: ContainerColor = 'red'
-  private barrelType: BarrelType = 'metal'
+  private barrelVariant: BarrelVariant = 'metal-dark'
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
@@ -127,16 +128,21 @@ export class LabApp {
 
     if (this.asset === 'barrel') {
       const row = document.createElement('div')
-      row.className = 'lab-colors'
-      const types: BarrelType[] = ['metal', 'wood']
-      const labels = { metal: 'Metal', wood: 'Wood' }
-      types.forEach((t) => {
+      row.className = 'lab-colors lab-colors-wrap'
+      const variants: BarrelVariant[] = ['metal-dark', 'metal-green', 'metal-yellow', 'wood']
+      const labels: Record<BarrelVariant, string> = {
+        'metal-dark': 'Metal',
+        'metal-green': 'Hazard Green',
+        'metal-yellow': 'Hazard Yellow',
+        wood: 'Wood',
+      }
+      variants.forEach((v) => {
         const b = document.createElement('button')
         b.type = 'button'
-        b.textContent = labels[t]
-        b.className = `swatch swatch-${t}${t === this.barrelType ? ' active' : ''}`
+        b.textContent = labels[v]
+        b.className = `swatch swatch-${v}${v === this.barrelVariant ? ' active' : ''}`
         b.addEventListener('click', () => {
-          this.barrelType = t
+          this.barrelVariant = v
           row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
           b.classList.add('active')
           void this.loadAsset()
@@ -195,16 +201,26 @@ export class LabApp {
     }
 
     if (this.asset === 'barrel') {
-      const result = await buildBarrel(this.barrelType)
+      const result = await buildBarrel(this.barrelVariant)
       this.studio.setAsset(result.group, 'prop')
       this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
       this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      const variantLabels: Record<BarrelVariant, string> = {
+        'metal-dark': 'dark metal drum with red bands and skull decal',
+        'metal-green': 'lime hazard drum with biohazard decal and waste stencil',
+        'metal-yellow': 'yellow hazard drum with toxic and radiation decals',
+        wood: 'wooden stave barrel with iron hoops and plank lid',
+      }
+      const variantNames: Record<BarrelVariant, string> = {
+        'metal-dark': 'Metal',
+        'metal-green': 'Hazard Green',
+        'metal-yellow': 'Hazard Yellow',
+        wood: 'Wood',
+      }
       this.statusEl.textContent =
         result.source === 'glb'
-          ? `Using imported ${this.barrelType} barrel GLB.`
-          : this.barrelType === 'wood'
-            ? 'Procedural v2 — wooden stave barrel with iron hoops and plank lid.'
-            : 'Procedural v2 — dark metal drum with red bands and skull decal.'
+          ? `Using imported ${variantNames[this.barrelVariant]} barrel GLB.`
+          : `Procedural v2 — ${variantLabels[this.barrelVariant]}.`
       return
     }
   }

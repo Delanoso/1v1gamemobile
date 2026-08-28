@@ -109,7 +109,18 @@ body,
   color: #fff;
 }
 
-.lab-colors .swatch-metal { background: #3a4048; color: #e8ecf0; }
+.lab-colors-wrap {
+  flex-wrap: wrap;
+}
+
+.lab-colors-wrap button {
+  flex: 1 1 calc(50% - 3px);
+  min-width: 0;
+}
+
+.lab-colors .swatch-metal-dark { background: #3a4048; color: #e8ecf0; }
+.lab-colors .swatch-metal-green { background: #5a9a20; color: #fff; }
+.lab-colors .swatch-metal-yellow { background: #c8a820; color: #1a1c20; }
 .lab-colors .swatch-wood { background: #7a5a38; color: #fff; }
 .lab-colors .swatch-red { background: #8b2e28; }
 .lab-colors .swatch-blue { background: #2a4a6a; }
