@@ -73,10 +73,12 @@ export function extrudeYZ(
 export function triggerGuard(mat: PartMat, z: number, scale = 1): THREE.Mesh {
   const shape = new THREE.Shape()
   shape.absarc(0, 0, 0.028 * scale, Math.PI * 0.12, Math.PI * 0.88, false)
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.014 * scale, bevelEnabled: false, curveSegments: 12 })
+  const depth = 0.014 * scale
+  const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 12 })
+  geo.translate(0, 0, -depth / 2)
   const m = new THREE.Mesh(geo, mat)
   m.rotation.y = Math.PI / 2
-  m.position.set(-0.007 * scale, -0.055 * scale, z)
+  m.position.set(0, -0.055 * scale, z)
   return m
 }
 

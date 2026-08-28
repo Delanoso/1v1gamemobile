@@ -79,11 +79,8 @@ export function buildShotgunMeshes(add: Add): void {
     add(ringZ(0.025, 0.0035, metal, z, midY))
   }
 
-  // Vent rib + heat slots (solid geometry on top barrel)
+  // Vent rib (single strip — slot boxes read as floaters from side angles)
   add(boxW(0.008, 0.005, 0.54, metal, 0, barrelY + 0.022, -0.34))
-  for (let i = 0; i < 7; i++) {
-    add(boxW(0.01, 0.003, 0.014, dark, 0, barrelY + 0.018, -0.16 - i * 0.055))
-  }
 
   const bead = new THREE.Mesh(new THREE.SphereGeometry(0.005, 10, 10), metal)
   bead.position.set(0, barrelY + 0.026, -0.68)
@@ -121,11 +118,11 @@ export function buildShotgunMeshes(add: Add): void {
     const z = -0.02 - i * 0.019
     const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.0075, 0.0075, 0.034, 10), weaponPolyMat(hullColors[i]))
     hull.rotation.z = Math.PI / 2
-    hull.position.set(-0.052, y, z)
+    hull.position.set(-0.05, y, z)
     add(hull)
     const brass = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0085, 0.007, 8), weaponBrassMat())
     brass.rotation.z = Math.PI / 2
-    brass.position.set(-0.055, y, z + 0.019)
+    brass.position.set(-0.052, y, z + 0.016)
     add(brass)
   }
 }
