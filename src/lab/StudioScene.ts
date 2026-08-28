@@ -24,39 +24,41 @@ export class StudioScene {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.15
+    this.renderer.toneMappingExposure = 1.45
     host.prepend(this.renderer.domElement)
 
-    this.scene.background = new THREE.Color(0x1a2028)
-    this.scene.fog = new THREE.Fog(0x1a2028, 18, 40)
+    this.scene.background = new THREE.Color(0x8a96a4)
+    this.scene.fog = new THREE.Fog(0x8a96a4, 28, 55)
 
     // Turntable platform
     const platform = new THREE.Mesh(
       new THREE.CylinderGeometry(4.5, 4.5, 0.12, 48),
-      new THREE.MeshStandardMaterial({ color: 0x2a3038, roughness: 0.85, metalness: 0.1 }),
+      new THREE.MeshStandardMaterial({ color: 0x6a7480, roughness: 0.82, metalness: 0.08 }),
     )
     platform.position.y = -0.06
     platform.receiveShadow = true
     this.scene.add(platform)
 
-    const grid = new THREE.GridHelper(12, 24, 0x3a4550, 0x252c34)
+    const grid = new THREE.GridHelper(12, 24, 0x9aa8b4, 0x788896)
     grid.position.y = 0.001
     this.scene.add(grid)
 
     this.scene.add(this.pivot)
 
-    // Studio lights
-    this.scene.add(new THREE.AmbientLight(0xa0b0c0, 0.65))
-    const key = new THREE.DirectionalLight(0xfff4e8, 1.65)
-    key.position.set(6, 10, 8)
+    // Studio lights — bright overcast yard so props read on iPad
+    this.scene.add(new THREE.HemisphereLight(0xe8eef4, 0x8898a8, 0.95))
+    this.scene.add(new THREE.AmbientLight(0xd8e4ec, 0.42))
+    const key = new THREE.DirectionalLight(0xfff8f0, 2.1)
+    key.position.set(6, 12, 8)
     key.castShadow = true
     key.shadow.mapSize.set(1024, 1024)
+    key.shadow.bias = -0.0002
     this.scene.add(key)
-    const fill = new THREE.DirectionalLight(0xb8c8e8, 0.85)
-    fill.position.set(-8, 5, -4)
+    const fill = new THREE.DirectionalLight(0xe0ecff, 1.35)
+    fill.position.set(-8, 6, -4)
     this.scene.add(fill)
-    const rim = new THREE.DirectionalLight(0xffffff, 0.55)
-    rim.position.set(0, 4, -10)
+    const rim = new THREE.DirectionalLight(0xffffff, 0.75)
+    rim.position.set(0, 5, -10)
     this.scene.add(rim)
 
     this.camera.position.set(0, 2.2, this.zoom)
