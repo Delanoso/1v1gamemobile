@@ -5,15 +5,17 @@ import { buildContainer } from '../assets/container/ContainerAsset'
 import { buildFloor } from '../assets/floor/FloorAsset'
 import { buildFence } from '../assets/fence/FenceAsset'
 import { buildBarrel, type BarrelVariant } from '../assets/barrel/BarrelAsset'
+import { buildCrate, type CrateVariant } from '../assets/crate/CrateAsset'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
-export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel'
+export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate'
 
 const ASSET_LABELS: Record<LabAsset, string> = {
   container: 'Shipping Container',
   floor: 'Asphalt Floor',
   fence: 'Chain-link Fence',
   barrel: 'Barrel',
+  crate: 'Crate',
 }
 
 const GLB_HINTS: Partial<Record<LabAsset, string>> = {
@@ -22,6 +24,8 @@ const GLB_HINTS: Partial<Record<LabAsset, string>> = {
   fence: 'public/assets/maps/container-yard/fence.glb',
   barrel:
     'public/assets/maps/container-yard/barrel-metal.glb · barrel-hazard-green.glb · barrel-hazard-yellow.glb · barrel-wood.glb',
+  crate:
+    'public/assets/maps/container-yard/crate-small.glb · crate-medium.glb · crate-large.glb · crate-long.glb · crate-flat.glb',
 }
 
 export class LabApp {
@@ -31,9 +35,10 @@ export class LabApp {
   private readonly trisEl: HTMLElement
   private readonly sourceEl: HTMLElement
   private readonly hintEl: HTMLElement
-  private asset: LabAsset = 'barrel'
+  private asset: LabAsset = 'crate'
   private containerColor: ContainerColor = 'red'
   private barrelVariant: BarrelVariant = 'metal-dark'
+  private crateVariant: CrateVariant = 'medium'
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
@@ -45,7 +50,7 @@ export class LabApp {
     this.panel.className = 'lab-panel'
     this.panel.innerHTML = `
       <p class="lab-eyebrow">ASSET LAB</p>
-      <h1 id="lab-title">Barrel</h1>
+      <h1 id="lab-title">Crate</h1>
       <p class="lab-sub">Polish one asset to 100% before it goes in the game.</p>
       <div class="lab-tabs" id="lab-tabs"></div>
       <div class="lab-meta">
@@ -151,6 +156,35 @@ export class LabApp {
       })
       this.panel.querySelector('.lab-actions')!.before(row)
       this.colorRow = row
+      return
+    }
+
+    if (this.asset === 'crate') {
+      const row = document.createElement('div')
+      row.className = 'lab-colors lab-colors-wrap'
+      const variants: CrateVariant[] = ['small', 'medium', 'large', 'long', 'flat']
+      const labels: Record<CrateVariant, string> = {
+        small: 'Small',
+        medium: 'Medium',
+        large: 'Large',
+        long: 'Long',
+        flat: 'Flat',
+      }
+      variants.forEach((v) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = labels[v]
+        b.className = `swatch swatch-crate-${v}${v === this.crateVariant ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.crateVariant = v
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
+      })
+      this.panel.querySelector('.lab-actions')!.before(row)
+      this.colorRow = row
     }
   }
 
@@ -221,6 +255,32 @@ export class LabApp {
         result.source === 'glb'
           ? `Using imported ${variantNames[this.barrelVariant]} barrel GLB.`
           : `Procedural v2 — ${variantLabels[this.barrelVariant]}.`
+      return
+    }
+
+    if (this.asset === 'crate') {
+      const result = await buildCrate(this.crateVariant)
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      const variantLabels: Record<CrateVariant, string> = {
+        small: 'compact cube with rope handle',
+        medium: 'standard shipping cube with stencil codes',
+        large: 'reinforced crate with diagonal brace and side-up marking',
+        long: 'low rifle-style ammo box',
+        flat: 'wide pallet crate with recessed lid and skids',
+      }
+      const variantNames: Record<CrateVariant, string> = {
+        small: 'Small',
+        medium: 'Medium',
+        large: 'Large',
+        long: 'Long',
+        flat: 'Flat',
+      }
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? `Using imported ${variantNames[this.crateVariant]} crate GLB.`
+          : `Procedural v1 — brown wood ${variantLabels[this.crateVariant]}.`
       return
     }
   }

@@ -44,8 +44,9 @@ Reload in the lab — it switches from procedural to GLB automatically.
 | 1 | Shipping container | Done — review anytime |
 | 2 | Asphalt floor | Done — review anytime |
 | 3 | Chain-link fence | Done — review anytime |
-| 4 | Barrel | **Active in lab** |
-| 5 | Full map assembly | Next |
+| 4 | Barrel | Done — review anytime |
+| 5 | Crate | **Active in lab** |
+| 6 | Full map assembly | Next |
 
 ## Approval checklist (container)
 
@@ -79,3 +80,13 @@ Reload in the lab — it switches from procedural to GLB automatically.
 - [ ] Performance OK on iPad
 
 When you say **"barrel approved"**, we integrate all lab assets into the container yard map.
+
+## Approval checklist (crate)
+
+- [ ] Wood reads weathered brown — not flat orange
+- [ ] Plank lines and frame trim visible up close
+- [ ] Size variants feel distinct (small / medium / large / long / flat)
+- [ ] Stencils and hardware read at gameplay distance
+- [ ] Performance OK on iPad
+
+When you say **"crate approved"**, we add crates to the container yard map scatter.

@@ -122,6 +122,11 @@ body,
 .lab-colors .swatch-metal-green { background: #5a9a20; color: #fff; }
 .lab-colors .swatch-metal-yellow { background: #c8a820; color: #1a1c20; }
 .lab-colors .swatch-wood { background: #7a5a38; color: #fff; }
+.lab-colors .swatch-crate-small { background: #7a5a38; color: #fff; }
+.lab-colors .swatch-crate-medium { background: #8a6848; color: #fff; }
+.lab-colors .swatch-crate-large { background: #6a4a30; color: #fff; }
+.lab-colors .swatch-crate-long { background: #9a7858; color: #1a1c20; }
+.lab-colors .swatch-crate-flat { background: #7a6040; color: #fff; }
 .lab-colors .swatch-red { background: #8b2e28; }
 .lab-colors .swatch-blue { background: #2a4a6a; }
 .lab-colors .swatch-green { background: #3a5a40; }
