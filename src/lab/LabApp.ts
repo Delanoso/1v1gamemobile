@@ -284,7 +284,7 @@ export class LabApp {
       this.statusEl.textContent =
         result.source === 'glb'
           ? 'Using imported floor GLB — check wetness, cracks, and line wear.'
-          : 'Procedural v1 — MW Shipment-style asphalt with lines, puddles, and curb lip.'
+          : 'Procedural v2 — 2K asphalt, smooth aggregate, mipmapped.'
       return
     }
 

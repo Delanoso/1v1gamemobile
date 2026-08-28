@@ -4,9 +4,7 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import {
-  asphaltColorMap,
-  asphaltNormalMap,
-  asphaltRoughnessMap,
+  asphaltMapsForTile,
   crackDecalTexture,
   puddleMaterial,
 } from './FloorTextures'
@@ -34,22 +32,14 @@ function countTriangles(root: THREE.Object3D): number {
 }
 
 function asphaltMat(repeatX = 1, repeatY = 1, forMap = false): THREE.MeshStandardMaterial {
-  const map = asphaltColorMap({
-    laneMarkings: !forMap,
-    surfaceBands: !forMap,
-  })
-  map.repeat.set(repeatX, repeatY)
-  const rough = asphaltRoughnessMap()
-  rough.repeat.set(repeatX, repeatY)
-  const normal = asphaltNormalMap()
-  normal.repeat.set(repeatX, repeatY)
+  const { map, rough, normal } = asphaltMapsForTile(repeatX, repeatY, forMap)
   return new THREE.MeshStandardMaterial({
     map,
     roughnessMap: rough,
     normalMap: normal,
-    normalScale: new THREE.Vector2(0.35, 0.35),
+    normalScale: new THREE.Vector2(0.22, 0.22),
     metalness: 0.03,
-    roughness: 0.9,
+    roughness: 0.92,
   })
 }
 
