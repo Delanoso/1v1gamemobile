@@ -248,22 +248,43 @@ export function buildContainerYardMap(): BuiltMap {
   addPalletStack(group, colliders, 10, -13)
   addPalletStack(group, colliders, -11, 12)
 
+  // Tarp over NW stack (MW Shipment detail)
+  const tarp = new THREE.Mesh(
+    new THREE.PlaneGeometry(6.8, 3.2),
+    new THREE.MeshStandardMaterial({
+      color: 0x8a7a58,
+      roughness: 0.96,
+      metalness: 0,
+      side: THREE.DoubleSide,
+    }),
+  )
+  tarp.position.set(-7, CH * 2 + 1.1, -7)
+  tarp.rotation.set(-0.55, 0.15, 0)
+  tarp.castShadow = true
+  group.add(tarp)
+
   // Distant crane silhouettes (non-colliding backdrop)
-  const craneMat = new THREE.MeshStandardMaterial({ color: 0x4a5058, roughness: 0.9 })
-  for (const x of [-35, 35]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.8, 18, 0.8), craneMat)
-    leg.position.set(x, 9, -28)
-    group.add(leg)
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(22, 0.6, 0.6), craneMat)
-    arm.position.set(x, 17, -28)
+  const craneMat = new THREE.MeshStandardMaterial({ color: 0x5a6068, roughness: 0.9 })
+  for (const x of [-38, 38]) {
+    const legA = new THREE.Mesh(new THREE.BoxGeometry(0.7, 20, 0.7), craneMat)
+    legA.position.set(x - 4, 10, -30)
+    group.add(legA)
+    const legB = new THREE.Mesh(new THREE.BoxGeometry(0.7, 20, 0.7), craneMat)
+    legB.position.set(x + 4, 10, -30)
+    group.add(legB)
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(26, 0.55, 0.55), craneMat)
+    arm.position.set(x, 19, -30)
     group.add(arm)
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, 1.4), craneMat)
+    cab.position.set(x + 10, 18.2, -30)
+    group.add(cab)
   }
 
   // Lighting — overcast port atmosphere (MW Shipment reference)
-  group.add(new THREE.HemisphereLight(0xc8d4e0, 0x3a4048, 0.95))
-  group.add(new THREE.AmbientLight(0x8898a8, 0.35))
+  group.add(new THREE.HemisphereLight(0xd0dae4, 0x4a5058, 1.05))
+  group.add(new THREE.AmbientLight(0x98a8b8, 0.28))
 
-  const sun = new THREE.DirectionalLight(0xfff0dc, 1.1)
+  const sun = new THREE.DirectionalLight(0xfff4e4, 0.95)
   sun.position.set(-30, 45, 20)
   sun.castShadow = true
   sun.shadow.mapSize.set(2048, 2048)

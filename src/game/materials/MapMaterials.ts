@@ -35,10 +35,17 @@ function getSharedMaps() {
   return { sharedNormal, sharedRough, asphaltColor, asphaltRough, fenceAlpha, woodColor }
 }
 
+const LOGOS: Record<ContainerColor, string> = {
+  red: 'TAAC',
+  blue: 'CROMWELL',
+  green: 'ATLAS',
+  tan: 'FRONTLINE',
+}
+
 export function createContainerMaterial(color: ContainerColor): THREE.MeshStandardMaterial {
   const { sharedNormal, sharedRough } = getSharedMaps()
   const pal = CONTAINER_COLORS[color]
-  const map = corrugatedColorMap(pal.base, pal.accent)
+  const map = corrugatedColorMap(pal.base, pal.accent, LOGOS[color])
   map.repeat.set(2, 1)
   const normal = sharedNormal!.clone()
   normal.repeat.set(2, 1)

@@ -9,7 +9,7 @@ function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContex
 }
 
 /** Corrugated shipping-container side panel. */
-export function corrugatedColorMap(base: string, accent: string): THREE.CanvasTexture {
+export function corrugatedColorMap(base: string, accent: string, logo?: string): THREE.CanvasTexture {
   const [c, ctx] = canvas(512, 512)
   ctx.fillStyle = base
   ctx.fillRect(0, 0, 512, 512)
@@ -19,6 +19,19 @@ export function corrugatedColorMap(base: string, accent: string): THREE.CanvasTe
     ctx.fillRect(0, y, 512, 7)
     ctx.fillStyle = 'rgba(0,0,0,0.08)'
     ctx.fillRect(0, y + 7, 512, 7)
+  }
+  if (logo) {
+    ctx.save()
+    ctx.translate(256, 256)
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'
+    ctx.font = 'bold 52px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(logo, 0, 0)
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'
+    ctx.lineWidth = 2
+    ctx.strokeText(logo, 0, 0)
+    ctx.restore()
   }
   // Rust streaks
   for (let i = 0; i < 18; i++) {

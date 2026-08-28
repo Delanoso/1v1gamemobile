@@ -16,7 +16,7 @@ export class PostPipeline {
   ) {
     this.composer = new EffectComposer(renderer)
     this.composer.addPass(new RenderPass(scene, camera))
-    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 0.22, 0.35, 0.88)
+    const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 0.16, 0.3, 0.9)
     this.composer.addPass(bloom)
     this.composer.addPass(new OutputPass())
   }

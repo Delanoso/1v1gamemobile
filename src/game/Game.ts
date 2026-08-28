@@ -10,6 +10,8 @@ import { WeaponSystem, createMuzzleFlash } from './weapons/WeaponSystem'
 import { WeaponViewModel } from './weapons/ViewModel'
 import { RangeTarget, findRangeTarget } from './entities/RangeTarget'
 import { spawnImpact, updateImpacts } from './effects/ImpactEffects'
+import { createSkyDome } from './effects/SkyDome'
+import { RainEffect } from './effects/RainEffect'
 import { HUD } from '../ui/HUD'
 import { MainMenu, type MenuAction } from '../ui/MainMenu'
 
@@ -32,6 +34,7 @@ export class Game {
   private readonly overlay: HTMLElement
   private readonly menuCam = new THREE.PerspectiveCamera(60, 1, 0.1, 200)
   private post: PostPipeline | null = null
+  private rain: RainEffect | null = null
 
   private colliders: Collider[] = []
   private targets: RangeTarget[] = []
@@ -66,8 +69,8 @@ export class Game {
     this.renderer.toneMappingExposure = 1.3
     this.host.prepend(this.renderer.domElement)
 
-    this.scene.background = new THREE.Color(0x9aacbc)
-    this.scene.fog = new THREE.FogExp2(0x9aacbc, 0.018)
+    this.scene.background = new THREE.Color(0xb8c8d8)
+    this.scene.fog = new THREE.FogExp2(0xb8c8d8, 0.016)
     this.scene.add(this.tracerGroup)
 
     this.muzzle = createMuzzleFlash()
@@ -119,6 +122,9 @@ export class Game {
     }
 
     this.player.spawn(this.spawnPoint, this.spawnYaw)
+    this.scene.add(createSkyDome())
+    this.rain = new RainEffect()
+    this.scene.add(this.rain.group)
     this.post = new PostPipeline(
       this.renderer,
       this.scene,
@@ -225,6 +231,11 @@ export class Game {
       this.player.moveSpeed,
       new THREE.Vector2(this.player.lookDeltaScratch.x, this.player.lookDeltaScratch.y),
     )
+
+    if (this.rain) {
+      this.rain.group.position.set(this.player.position.x, 0, this.player.position.z)
+      this.rain.update(dt)
+    }
 
     for (const t of this.targets) t.update(dt)
 
