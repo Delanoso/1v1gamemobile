@@ -13,8 +13,8 @@ export function chainLinkAlphaMap(): THREE.CanvasTexture {
   ctx.fillStyle = '#000'
   ctx.fillRect(0, 0, 256, 256)
   ctx.strokeStyle = '#fff'
-  ctx.lineWidth = 2.2
-  const step = 14
+  ctx.lineWidth = 1.8
+  const step = 11
   for (let i = -256; i < 512; i += step) {
     ctx.beginPath()
     ctx.moveTo(i, 0)
@@ -33,7 +33,7 @@ export function chainLinkAlphaMap(): THREE.CanvasTexture {
 
 export function chainLinkColorMap(): THREE.CanvasTexture {
   const [c, ctx] = canvas(256, 256)
-  ctx.fillStyle = '#707880'
+  ctx.fillStyle = '#8a9098'
   ctx.fillRect(0, 0, 256, 256)
   for (let y = 0; y < 256; y += 8) {
     ctx.fillStyle = y % 16 === 0 ? '#7a828a' : '#686e76'

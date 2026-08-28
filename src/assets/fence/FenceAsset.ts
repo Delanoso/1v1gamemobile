@@ -1,11 +1,12 @@
 /**
  * Chain-link fence panel — single source of truth for yard perimeter fencing.
+ * Reference: galvanized posts, top rail, chain mesh, Y-brackets, concertina razor wire.
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { chainLinkAlphaMap, chainLinkColorMap, chainLinkRoughnessMap } from './FenceTextures'
 
-export const FENCE_PANEL = { width: 4, height: 3.2, postSpacing: 2 } as const
+export const FENCE_PANEL = { width: 3.6, height: 2.8 } as const
 
 const GLB_PATH = '/assets/maps/container-yard/fence.glb'
 
@@ -28,7 +29,7 @@ function countTriangles(root: THREE.Object3D): number {
 }
 
 function steelMat(): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color: 0x5a6068, metalness: 0.82, roughness: 0.38 })
+  return new THREE.MeshStandardMaterial({ color: 0x9098a0, metalness: 0.88, roughness: 0.32 })
 }
 
 function chainMat(repeatX: number, repeatY: number): THREE.MeshStandardMaterial {
@@ -43,16 +44,46 @@ function chainMat(repeatX: number, repeatY: number): THREE.MeshStandardMaterial 
     alphaMap: alpha,
     roughnessMap: rough,
     transparent: true,
-    opacity: 0.92,
-    metalness: 0.72,
-    roughness: 0.42,
+    opacity: 0.94,
+    metalness: 0.78,
+    roughness: 0.38,
     side: THREE.DoubleSide,
-    alphaTest: 0.35,
+    alphaTest: 0.4,
   })
 }
 
-function concreteMat(): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color: 0x6a6e72, roughness: 0.92, metalness: 0.02 })
+function addYBracket(x: number, y: number, steel: THREE.MeshStandardMaterial, addMesh: (m: THREE.Mesh) => void): void {
+  for (const side of [-1, 1] as const) {
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.38, 8), steel)
+    arm.rotation.x = side * 0.72
+    arm.position.set(x + side * 0.1, y + 0.16, 0.12)
+    addMesh(arm)
+  }
+}
+
+function addConcertinaWire(
+  W: number,
+  railY: number,
+  steel: THREE.MeshStandardMaterial,
+  addMesh: (m: THREE.Mesh) => void,
+): void {
+  const coilR = 0.1
+  const tubeR = 0.011
+  const coils = Math.floor(W / 0.22)
+  for (let i = 0; i < coils; i++) {
+    const t = i / Math.max(1, coils - 1)
+    const x = -W / 2 + 0.14 + t * (W - 0.28)
+    const torus = new THREE.Mesh(new THREE.TorusGeometry(coilR, tubeR, 6, 14), steel)
+    torus.rotation.y = Math.PI / 2
+    torus.rotation.x = i % 2 === 0 ? 0.15 : -0.15
+    torus.position.set(x, railY + coilR * 0.75, 0.1 + (i % 2 === 0 ? 0.04 : -0.04))
+    addMesh(torus)
+  }
+  // Support wire through Y-brackets
+  const support = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, W - 0.2, 6), steel)
+  support.rotation.z = Math.PI / 2
+  support.position.set(0, railY + 0.2, 0.14)
+  addMesh(support)
 }
 
 /** Procedural fence panel section for Asset Lab review. */
@@ -60,9 +91,8 @@ export function buildProceduralFence(): FenceBuildResult {
   const group = new THREE.Group()
   const { width: W, height: H } = FENCE_PANEL
   const steel = steelMat()
-  const meshBottom = 0.12
-  const meshH = H - meshBottom - 0.18
-  const postR = 0.045
+  const postR = 0.04
+  const railY = H
 
   const addMesh = (mesh: THREE.Mesh) => {
     mesh.castShadow = true
@@ -70,50 +100,28 @@ export function buildProceduralFence(): FenceBuildResult {
     group.add(mesh)
   }
 
-  // Posts + concrete footings
-  for (const x of [-W / 2, 0, W / 2]) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(postR, postR, H, 10), steel)
+  // End posts only (single panel section)
+  for (const x of [-W / 2, W / 2]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(postR, postR, H, 12), steel)
     post.position.set(x, H / 2, 0)
     addMesh(post)
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(postR * 1.15, postR, 0.06, 10), steel)
-    cap.position.set(x, H + 0.03, 0)
-    addMesh(cap)
-    const footing = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.14, 0.28), concreteMat())
-    footing.position.set(x, 0.07, 0)
-    addMesh(footing)
+    addYBracket(x, railY, steel, addMesh)
   }
 
-  // Top and bottom rails
-  for (const y of [H - 0.08, meshBottom + 0.04]) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(W, 0.06, 0.06), steel)
-    rail.position.set(0, y, 0)
-    addMesh(rail)
-  }
+  // Top rail
+  const topRail = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, W - postR * 2, 10), steel)
+  topRail.rotation.z = Math.PI / 2
+  topRail.position.set(0, railY, 0)
+  addMesh(topRail)
 
-  // Chain-link mesh bays (between posts)
-  const bays: [number, number][] = [
-    [-W / 4, W / 2],
-    [W / 4, W / 2],
-  ]
-  for (const [cx, bayW] of bays) {
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(bayW - 0.12, meshH), chainMat(6, 5))
-    mesh.position.set(cx, meshBottom + meshH / 2 + 0.04, 0)
-    addMesh(mesh)
-  }
+  // Chain-link mesh (ground to top rail)
+  const meshH = H - 0.14
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(W - postR * 2.4, meshH), chainMat(8, 7))
+  mesh.position.set(0, meshH / 2 + 0.02, 0)
+  addMesh(mesh)
 
-  // Tension wire along top
-  const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, W - 0.1, 6), steel)
-  wire.rotation.z = Math.PI / 2
-  wire.position.set(0, H - 0.02, 0.04)
-  addMesh(wire)
-
-  // Barb coil hint on top rail (port security detail)
-  for (const x of [-W / 2 + 0.3, W / 2 - 0.3]) {
-    const coil = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.018, 6, 12), steel)
-    coil.rotation.x = Math.PI / 2
-    coil.position.set(x, H + 0.08, 0)
-    addMesh(coil)
-  }
+  // Concertina razor wire along top
+  addConcertinaWire(W, railY, steel, addMesh)
 
   return { group, source: 'procedural', triangleCount: countTriangles(group) }
 }

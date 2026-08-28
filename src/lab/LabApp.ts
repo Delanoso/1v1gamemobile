@@ -171,7 +171,7 @@ export class LabApp {
       this.statusEl.textContent =
         result.source === 'glb'
           ? 'Using imported fence GLB — check mesh transparency and post alignment.'
-          : 'Procedural v1 — galvanized posts, rails, chain-link bays, tension wire, barb coils.'
+          : 'Procedural v2 — galvanized posts, chain mesh, Y-brackets, concertina razor wire.'
       return
     }
 
