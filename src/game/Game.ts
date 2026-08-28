@@ -43,8 +43,8 @@ export class Game {
   private muzzleTimer = 0
   private running = false
   private kills = 0
-  private spawnPoint = new THREE.Vector3(-17, 0, -13)
-  private spawnYaw = Math.atan2(17 - -17, 13 - -13)
+  private spawnPoint = new THREE.Vector3(0, 0, 8)
+  private spawnYaw = 0
   private reloadWasActive = false
 
   constructor(host: HTMLElement) {
@@ -109,9 +109,10 @@ export class Game {
     this.scene.add(map.group)
     this.colliders = map.colliders
     this.spawnPoint.copy(map.spawns[0])
+    // Face toward opponent spawn / map center (atan2(dx, dz) with game forward = (-sin, -cos)).
     this.spawnYaw = Math.atan2(
       map.spawns[1].x - map.spawns[0].x,
-      map.spawns[1].z - map.spawns[0].z,
+      map.spawns[0].z - map.spawns[1].z,
     )
 
     for (const anchor of map.targetAnchors) {

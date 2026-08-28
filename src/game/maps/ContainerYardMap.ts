@@ -302,8 +302,8 @@ export function buildContainerYardMap(): BuiltMap {
   rim.position.set(20, 18, -15)
   group.add(rim)
 
-  // Clear center lanes — old (-16,-11) wedged into perimeter containers + crates
-  const spawns = [new THREE.Vector3(0, 0, 10), new THREE.Vector3(0, 0, -10)]
+  // Center lanes — face each other toward mid map (not toward perimeter fence).
+  const spawns = [new THREE.Vector3(0, 0, 8), new THREE.Vector3(0, 0, -8)]
 
   const targetAnchors = [
     new THREE.Vector3(0, 0, 0),
