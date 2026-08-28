@@ -1,15 +1,18 @@
 import * as THREE from 'three'
 import { GAME } from '../config/gameConfig'
+import { audio } from '../audio/AudioManager'
 import { InputManager } from './input/InputManager'
 import { TouchControls } from './input/TouchControls'
 import { buildWarehouseMap, type Collider } from './maps/WarehouseMap'
 import { PlayerController } from './player/PlayerController'
 import { WeaponSystem, createMuzzleFlash } from './weapons/WeaponSystem'
+import { WeaponViewModel } from './weapons/ViewModel'
 import { RangeTarget, findRangeTarget } from './entities/RangeTarget'
+import { spawnImpact, updateImpacts } from './effects/ImpactEffects'
 import { HUD } from '../ui/HUD'
 import { MainMenu, type MenuAction } from '../ui/MainMenu'
 
-type Phase = 'menu' | 'range'
+type Phase = 'menu' | 'play'
 
 export class Game {
   private readonly host: HTMLElement
@@ -19,6 +22,7 @@ export class Game {
   private readonly input = new InputManager()
   private readonly player = new PlayerController()
   private readonly weapon = new WeaponSystem()
+  private readonly viewModel = new WeaponViewModel()
   private readonly hud: HUD
   private readonly menu: MainMenu
   private readonly touch: TouchControls
@@ -34,8 +38,9 @@ export class Game {
   private muzzleTimer = 0
   private running = false
   private kills = 0
-  private spawnPoint = new THREE.Vector3(-14, 0, -10)
-  private spawnYaw = Math.atan2(-14, -10)
+  private spawnPoint = new THREE.Vector3(-17, 0, -13)
+  private spawnYaw = Math.atan2(17 - -17, 13 - -13)
+  private reloadWasActive = false
 
   constructor(host: HTMLElement) {
     this.host = host
@@ -56,16 +61,17 @@ export class Game {
     this.renderer.shadowMap.type = THREE.PCFShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.25
+    this.renderer.toneMappingExposure = 1.3
     this.host.prepend(this.renderer.domElement)
 
-    this.scene.background = new THREE.Color(0x1a222a)
-    this.scene.fog = new THREE.Fog(0x1a222a, 40, 90)
+    this.scene.background = new THREE.Color(0x1c242c)
+    this.scene.fog = new THREE.Fog(0x1c242c, 45, 100)
     this.scene.add(this.tracerGroup)
 
     this.muzzle = createMuzzleFlash()
     this.player.camera.add(this.muzzle)
     this.muzzle.position.set(0.18, -0.14, -0.45)
+    this.player.camera.add(this.viewModel.group)
     this.scene.add(this.player.camera)
 
     this.hud = new HUD(this.overlay)
@@ -77,8 +83,11 @@ export class Game {
     this.menu.setVisible(true)
 
     this.menu.on((action) => this.handleMenu(action))
+    const resumeAudio = () => void audio.resume()
+    window.addEventListener('touchstart', resumeAudio, { once: true })
+    window.addEventListener('click', resumeAudio, { once: true })
     this.renderer.domElement.addEventListener('click', () => {
-      if (this.phase === 'range' && !document.pointerLockElement) {
+      if (this.phase === 'play' && !document.pointerLockElement) {
         void this.renderer.domElement.requestPointerLock()
       }
     })
@@ -95,6 +104,10 @@ export class Game {
     this.scene.add(map.group)
     this.colliders = map.colliders
     this.spawnPoint.copy(map.spawns[0])
+    this.spawnYaw = Math.atan2(
+      map.spawns[1].x - map.spawns[0].x,
+      map.spawns[1].z - map.spawns[0].z,
+    )
 
     for (const anchor of map.targetAnchors) {
       const t = new RangeTarget(anchor)
@@ -107,32 +120,26 @@ export class Game {
   }
 
   private handleMenu(action: MenuAction): void {
-    if (action === 'range') {
-      this.enterRange()
+    if (action === 'play') {
+      this.enterPlay()
       return
     }
-    if (action === 'private') {
-      this.menu.showToast('Private rooms land in Phase 1 (P2P invite codes).')
-      return
-    }
-    if (action === 'quick') {
-      this.menu.showToast('Quick Match lands with accounts + signaling.')
-      return
-    }
-    this.menu.showToast('Loadouts: primary / secondary / lethal / tac / perks — next.')
+    this.menu.showToast('Coming soon — we are polishing core gameplay first.')
   }
 
-  private enterRange(): void {
-    this.phase = 'range'
+  private enterPlay(): void {
+    this.phase = 'play'
     this.menu.setVisible(false)
     this.hud.setVisible(true)
     this.touch.setVisible(true)
-    this.hud.setMode('RANGE')
+    this.hud.setMode('WAREHOUSE')
     this.weapon.reset()
     this.kills = 0
+    this.reloadWasActive = false
     this.player.spawn(this.spawnPoint, this.spawnYaw)
     this.hud.setHealth(this.player.health)
-    this.hud.pushFeed('Range live — clear the plates')
+    this.hud.pushFeed('Warehouse live — test movement & gunfeel')
+    void audio.resume()
   }
 
   private onResize(): void {
@@ -149,56 +156,72 @@ export class Game {
     requestAnimationFrame(this.loop)
     const dt = Math.min(0.05, this.clock.getDelta())
 
-    if (this.phase === 'range') {
-      this.updateRange(dt)
+    if (this.phase === 'play') {
+      this.updatePlay(dt)
+      updateImpacts(dt)
       if (this.muzzleTimer > 0) {
         this.muzzleTimer -= dt
-        this.muzzle.intensity = this.muzzleTimer > 0 ? 2.4 : 0
+        this.muzzle.intensity = this.muzzleTimer > 0 ? 2.8 : 0
       }
       this.renderer.render(this.scene, this.player.camera)
     } else {
       const t = this.clock.elapsedTime
-      this.menuCam.position.set(Math.sin(t * 0.12) * 20, 7.5, Math.cos(t * 0.12) * 20)
-      this.menuCam.lookAt(0, 1.8, 0)
+      this.menuCam.position.set(Math.sin(t * 0.1) * 22, 8.5, Math.cos(t * 0.1) * 22)
+      this.menuCam.lookAt(0, 2, 0)
       this.renderer.render(this.scene, this.menuCam)
     }
   }
 
-  private updateRange(dt: number): void {
+  private updatePlay(dt: number): void {
     const input = this.input.sample(dt)
     const ads = input.ads
-    this.player.update(dt, input, this.colliders, ads)
+    const sprinting = input.sprint
+
+    this.player.update(dt, input, this.colliders, ads, sprinting)
     this.weapon.update(dt)
 
+    audio.tickFootsteps(dt, this.player.moveSpeed, sprinting, this.player.grounded)
+
     if (input.reload) this.weapon.tryReload()
+    if (this.weapon.reloading && !this.reloadWasActive) audio.playReload()
+    this.reloadWasActive = this.weapon.reloading
 
     if (input.fire) {
       const shot = this.weapon.tryFire(this.player, ads, this.hitables)
       if (shot) {
-        this.muzzleTimer = 0.05
+        this.muzzleTimer = 0.055
+        this.viewModel.onFire()
+        audio.playGunshot(ads)
         this.spawnTracer(shot.origin, shot.direction, shot.hitPoint)
+        if (shot.hitPoint) spawnImpact(this.scene, shot.hitPoint, shot.hitNormal ?? undefined)
         if (shot.hitObject) {
           const target = findRangeTarget(shot.hitObject)
           if (target) {
             const killed = target.applyDamage(GAME.weapon.damage)
+            audio.playHit()
             this.hud.flashHitmarker(killed)
             if (killed) {
               this.kills += 1
-              this.hud.pushFeed(`Plate down · ${this.kills}`)
+              this.hud.pushFeed(`Target down · ${this.kills}`)
             }
           }
         }
       }
     }
 
-    if (input.lethal) this.hud.pushFeed('Lethal — wired in Phase 2')
-    if (input.tactical) this.hud.pushFeed('Tactical — wired in Phase 2')
+    this.viewModel.update(
+      dt,
+      ads,
+      this.player.moveSpeed,
+      new THREE.Vector2(this.player.lookDeltaScratch.x, this.player.lookDeltaScratch.y),
+    )
 
     for (const t of this.targets) t.update(dt)
 
     this.hud.setAds(ads)
     this.hud.setAmmo(this.weapon.ammo, this.weapon.reserve, this.weapon.reloading)
     this.hud.setHealth(this.player.health)
+    this.hud.setSprinting(sprinting && this.player.moveSpeed > GAME.player.walkSpeed)
   }
 
   private spawnTracer(
@@ -206,12 +229,12 @@ export class Game {
     dir: THREE.Vector3,
     hit: THREE.Vector3 | null,
   ): void {
-    const end = hit ?? origin.clone().addScaledVector(dir, 45)
+    const end = hit ?? origin.clone().addScaledVector(dir, 50)
     const geo = new THREE.BufferGeometry().setFromPoints([origin.clone(), end])
     const mat = new THREE.LineBasicMaterial({
       color: 0xffe2a8,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.9,
     })
     const line = new THREE.Line(geo, mat)
     this.tracerGroup.add(line)
@@ -219,6 +242,6 @@ export class Game {
       this.tracerGroup.remove(line)
       geo.dispose()
       mat.dispose()
-    }, 50)
+    }, 45)
   }
 }

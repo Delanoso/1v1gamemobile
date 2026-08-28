@@ -8,6 +8,7 @@ export class HUD {
   private crosshair: HTMLElement
   private hitmarker: HTMLElement
   private modeEl: HTMLElement
+  private sprintEl: HTMLElement
 
   constructor(host: HTMLElement) {
     this.root = document.createElement('div')
@@ -15,8 +16,9 @@ export class HUD {
     this.root.innerHTML = `
       <div class="top-bar">
         <div class="brand">${GAME.brand}</div>
-        <div class="mode" id="hud-mode">RANGE</div>
+        <div class="mode" id="hud-mode">WAREHOUSE</div>
       </div>
+      <div class="sprint-tag" id="sprint-tag">SPRINT</div>
       <div class="crosshair" id="crosshair">
         <span class="ch h"></span><span class="ch v"></span>
       </div>
@@ -39,6 +41,7 @@ export class HUD {
     this.crosshair = this.root.querySelector('#crosshair')!
     this.hitmarker = this.root.querySelector('#hitmarker')!
     this.modeEl = this.root.querySelector('#hud-mode')!
+    this.sprintEl = this.root.querySelector('#sprint-tag')!
   }
 
   setVisible(v: boolean): void {
@@ -56,6 +59,11 @@ export class HUD {
 
   setAmmo(mag: number, reserve: number, reloading: boolean): void {
     this.ammoEl.textContent = reloading ? 'RELOADING…' : `${mag} / ${reserve}`
+    this.ammoEl.classList.toggle('low', !reloading && mag <= 8)
+  }
+
+  setSprinting(sprinting: boolean): void {
+    this.sprintEl.classList.toggle('show', sprinting)
   }
 
   setAds(ads: boolean): void {

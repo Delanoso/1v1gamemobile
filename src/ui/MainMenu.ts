@@ -1,6 +1,6 @@
 import { GAME } from '../config/gameConfig'
 
-export type MenuAction = 'range' | 'private' | 'quick' | 'loadout'
+export type MenuAction = 'play'
 
 export class MainMenu {
   readonly root: HTMLElement
@@ -14,22 +14,18 @@ export class MainMenu {
       <div class="menu-panel">
         <p class="eyebrow">1v1 · MODERN WARFARE</p>
         <h1>${GAME.brand}</h1>
-        <p class="tagline">Fast duels. Loadouts locked in. No wasted time.</p>
+        <p class="tagline">Fast duels. Tight maps. No wasted time.</p>
         <div class="menu-actions">
-          <button type="button" data-action="range" class="primary">Enter Range</button>
-          <button type="button" data-action="private">Private Room</button>
-          <button type="button" data-action="quick">Quick Match</button>
-          <button type="button" data-action="loadout">Loadouts</button>
+          <button type="button" data-action="play" class="primary">Play</button>
         </div>
-        <p class="menu-note">Phase 0 — Range is playable. Matchmaking &amp; accounts come next.</p>
+        <p class="menu-note">Polishing gunfeel &amp; warehouse map. Multiplayer comes later.</p>
       </div>
     `
     host.appendChild(this.root)
 
     this.root.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const action = btn.dataset.action as MenuAction
-        this.onAction?.(action)
+        this.onAction?.('play')
       })
     })
   }

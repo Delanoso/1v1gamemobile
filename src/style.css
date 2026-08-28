@@ -182,6 +182,26 @@ body,
   color: var(--muted);
 }
 
+.sprint-tag {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sprint-tag.show {
+  opacity: 1;
+}
+
+.ammo.low {
+  color: var(--danger);
+}
+
 .crosshair {
   position: absolute;
   left: 50%;
