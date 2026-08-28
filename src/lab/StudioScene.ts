@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-export type StudioViewMode = 'prop' | 'ground'
+export type StudioViewMode = 'prop' | 'ground' | 'weapon'
 
 /** Neutral studio rig for inspecting one asset at a time. */
 export class StudioScene {
@@ -75,6 +75,9 @@ export class StudioScene {
     if (mode === 'ground') {
       object.position.y = 0.02
       this.applyGroundDefaults()
+    } else if (mode === 'weapon') {
+      object.position.y = 0.55
+      this.applyWeaponDefaults()
     } else {
       object.position.y = propEyeLevel(object)
       this.applyPropDefaults()
@@ -102,6 +105,7 @@ export class StudioScene {
 
   resetView(mode: StudioViewMode = this.viewMode): void {
     if (mode === 'ground') this.applyGroundDefaults()
+    else if (mode === 'weapon') this.applyWeaponDefaults()
     else this.applyPropDefaults()
     this.applyOrbit()
   }
@@ -111,6 +115,13 @@ export class StudioScene {
     this.rotX = 0.15
     this.lookAtY = 1.3
     this.zoom = 9
+  }
+
+  private applyWeaponDefaults(): void {
+    this.rotY = 0.55
+    this.rotX = 0.12
+    this.lookAtY = 0.55
+    this.zoom = 3.2
   }
 
   private applyGroundDefaults(): void {
@@ -131,8 +142,13 @@ export class StudioScene {
     const max =
       this.viewMode === 'ground'
         ? Math.max(size.x, size.z)
-        : Math.max(size.x, size.y, size.z)
-    this.zoom = Math.max(6, max * (this.viewMode === 'ground' ? 1.6 : 2.2))
+        : this.viewMode === 'weapon'
+          ? Math.max(size.x, size.y, size.z)
+          : Math.max(size.x, size.y, size.z)
+    this.zoom = Math.max(
+      this.viewMode === 'weapon' ? 2.4 : 6,
+      max * (this.viewMode === 'ground' ? 1.6 : this.viewMode === 'weapon' ? 2.8 : 2.2),
+    )
     this.applyOrbit()
   }
 

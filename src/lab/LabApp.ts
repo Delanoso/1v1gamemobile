@@ -7,9 +7,10 @@ import { buildFence } from '../assets/fence/FenceAsset'
 import { buildBarrel, type BarrelVariant } from '../assets/barrel/BarrelAsset'
 import { buildCrate, type CrateVariant } from '../assets/crate/CrateAsset'
 import { buildPallet, type PalletVariant } from '../assets/pallet/PalletAsset'
+import { buildWeapon, type WeaponVariant } from '../assets/weapon/WeaponAsset'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
-export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate' | 'pallet'
+export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate' | 'pallet' | 'weapon'
 
 const ASSET_LABELS: Record<LabAsset, string> = {
   container: 'Shipping Container',
@@ -18,6 +19,7 @@ const ASSET_LABELS: Record<LabAsset, string> = {
   barrel: 'Barrel',
   crate: 'Crate',
   pallet: 'Pallet',
+  weapon: 'Weapon',
 }
 
 const GLB_HINTS: Partial<Record<LabAsset, string>> = {
@@ -30,6 +32,7 @@ const GLB_HINTS: Partial<Record<LabAsset, string>> = {
     'public/assets/maps/container-yard/crate-small.glb · crate-medium.glb · crate-large.glb · crate-long.glb · crate-flat.glb',
   pallet:
     'public/assets/maps/container-yard/pallet-standard.glb · pallet-double.glb · pallet-plastic.glb',
+  weapon: 'public/assets/weapons/m4a1.glb · shotgun.glb · svd.glb · ak74.glb',
 }
 
 export class LabApp {
@@ -39,11 +42,12 @@ export class LabApp {
   private readonly trisEl: HTMLElement
   private readonly sourceEl: HTMLElement
   private readonly hintEl: HTMLElement
-  private asset: LabAsset = 'container'
+  private asset: LabAsset = 'weapon'
   private containerColor: ContainerColor = 'red'
   private barrelVariant: BarrelVariant = 'metal-dark'
   private crateVariant: CrateVariant = 'medium'
   private palletVariant: PalletVariant = 'standard'
+  private weaponVariant: WeaponVariant = 'm4a1'
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
@@ -82,7 +86,9 @@ export class LabApp {
     if (a && a in ASSET_LABELS) this.asset = a
 
     this.panel.querySelector('#lab-reset')!.addEventListener('click', () =>
-      this.studio.resetView(this.asset === 'floor' ? 'ground' : 'prop'),
+      this.studio.resetView(
+        this.asset === 'floor' ? 'ground' : this.asset === 'weapon' ? 'weapon' : 'prop',
+      ),
     )
     this.panel.querySelector('#lab-reload')!.addEventListener('click', () => void this.loadAsset())
 
@@ -217,6 +223,34 @@ export class LabApp {
       })
       this.panel.querySelector('.lab-actions')!.before(row)
       this.colorRow = row
+      return
+    }
+
+    if (this.asset === 'weapon') {
+      const row = document.createElement('div')
+      row.className = 'lab-colors lab-colors-wrap'
+      const variants: WeaponVariant[] = ['m4a1', 'shotgun', 'svd', 'ak74']
+      const labels: Record<WeaponVariant, string> = {
+        m4a1: 'M4A1',
+        shotgun: 'Shotgun',
+        svd: 'DMR',
+        ak74: 'AK-74',
+      }
+      variants.forEach((v) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = labels[v]
+        b.className = `swatch swatch-weapon-${v}${v === this.weaponVariant ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.weaponVariant = v
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
+      })
+      this.panel.querySelector('.lab-actions')!.before(row)
+      this.colorRow = row
     }
   }
 
@@ -335,6 +369,30 @@ export class LabApp {
         result.source === 'glb'
           ? `Using imported ${variantNames[this.palletVariant]} pallet GLB.`
           : `Procedural v1 — ${variantLabels[this.palletVariant]}.`
+      return
+    }
+
+    if (this.asset === 'weapon') {
+      const result = await buildWeapon(this.weaponVariant)
+      this.studio.setAsset(result.group, 'weapon')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      const variantLabels: Record<WeaponVariant, string> = {
+        m4a1: 'assault rifle — rails, carry handle, STANAG mag (in-game viewmodel)',
+        shotgun: 'pump shotgun — wood stock/pump, vented heat shield, side saddle',
+        svd: 'marksman rifle — wood thumbhole stock, PSO-style scope',
+        ak74: 'tactical AK — skeleton stock, suppressor, vertical grip',
+      }
+      const variantNames: Record<WeaponVariant, string> = {
+        m4a1: 'M4A1',
+        shotgun: 'Shotgun',
+        svd: 'DMR',
+        ak74: 'AK-74',
+      }
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? `Using imported ${variantNames[this.weaponVariant]} GLB.`
+          : `Procedural v2 — ${variantLabels[this.weaponVariant]}.`
     }
   }
 

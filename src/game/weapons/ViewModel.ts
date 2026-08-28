@@ -1,41 +1,17 @@
 import * as THREE from 'three'
 import { GAME } from '../../config/gameConfig'
+import { buildViewModelGroup } from '../../assets/weapon/WeaponAsset'
 
-/** Simple first-person rifle mesh with recoil animation. */
+/** First-person weapon mesh with recoil animation. */
 export class WeaponViewModel {
   readonly group = new THREE.Group()
-  private readonly body: THREE.Mesh
-  private readonly barrel: THREE.Mesh
+  private readonly model: THREE.Group
   private kick = 0
   private sway = new THREE.Vector2()
 
   constructor() {
-    const dark = new THREE.MeshStandardMaterial({ color: 0x2a2f34, metalness: 0.55, roughness: 0.35 })
-    const rail = new THREE.MeshStandardMaterial({ color: 0x1a1e22, metalness: 0.7, roughness: 0.25 })
-
-    this.body = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.42), dark)
-    this.body.position.set(0.14, -0.16, -0.38)
-    this.group.add(this.body)
-
-    this.barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.34, 8), rail)
-    this.barrel.rotation.x = Math.PI / 2
-    this.barrel.position.set(0.14, -0.13, -0.62)
-    this.group.add(this.barrel)
-
-    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.07), dark)
-    grip.position.set(0.14, -0.24, -0.3)
-    grip.rotation.x = 0.35
-    this.group.add(grip)
-
-    const mag = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.14, 0.08), dark)
-    mag.position.set(0.14, -0.26, -0.36)
-    this.group.add(mag)
-
-    const sight = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.025, 0.06), rail)
-    sight.position.set(0.14, -0.1, -0.42)
-    this.group.add(sight)
-
-    this.group.position.set(0, 0, 0)
+    this.model = buildViewModelGroup('m4a1')
+    this.group.add(this.model)
   }
 
   onFire(): void {
@@ -63,6 +39,6 @@ export class WeaponViewModel {
       this.sway.x * 0.5,
       this.sway.y * 0.3,
     )
-    this.barrel.position.z = -0.62 - this.kick * 0.4
+    this.model.position.z = -0.08 - this.kick * 0.35
   }
 }

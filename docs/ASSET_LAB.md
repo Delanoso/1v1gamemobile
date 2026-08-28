@@ -24,7 +24,7 @@ Or locally: `http://localhost:5173/lab.html`
 2. Iterate until it matches your reference (100%)
 3. Export approved asset (GLB) or approve procedural version
 4. Asset is used automatically in Container Yard map
-5. Move to next tab: Floor → Fence → Barrel → Crate → Pallet → …
+5. Move to next tab: Floor → Fence → Barrel → Crate → Pallet → Weapon → …
 ```
 
 ## Drop a Tripo/Meshy model
@@ -46,8 +46,9 @@ Reload in the lab — it switches from procedural to GLB automatically.
 | 3 | Chain-link fence | Done — review anytime |
 | 4 | Barrel | Done — review anytime |
 | 5 | Crate | Done — review anytime |
-| 6 | Pallet | **In progress** |
-| 7 | Full map assembly | In progress |
+| 6 | Pallet | Done — review anytime |
+| 7 | **Weapon** | **In progress** |
+| 8 | Full map assembly | In progress |
 
 ## Approval checklist (container)
 
@@ -101,6 +102,32 @@ When you say **"crate approved"**, we add crates to the container yard map scatt
 - [ ] Performance OK on iPad
 
 When you say **"pallet approved"**, we scatter pallets into the container yard map.
+
+## Drop a weapon GLB
+
+Export **GLB** (1K textures) and save as one of:
+
+```
+public/assets/weapons/m4a1.glb
+public/assets/weapons/shotgun.glb
+public/assets/weapons/svd.glb
+public/assets/weapons/ak74.glb
+```
+
+Reload in the lab — the matching variant switches from procedural to GLB automatically.
+
+## Approval checklist (weapon)
+
+Lab opens on the **Weapon** tab by default. Use the swatches to switch variants:
+
+- [ ] **M4A1** — assault rifle silhouette, rails, carry handle (in-game viewmodel)
+- [ ] **Shotgun** — wood stock/pump, vented heat shield, cheek riser, shell saddle
+- [ ] **DMR (SVD)** — thumbhole wood stock, ventilated handguard, PSO-style scope
+- [ ] **AK-74** — skeleton stock, ribbed suppressor with heat tip, tactical grip/optic
+- [ ] Metal/wood materials read worn and realistic under lab lighting
+- [ ] Performance OK on iPad (< 15k tris per weapon ideal)
+
+When you say **"weapon approved"** (or name a specific variant), we wire it into the game loadout / viewmodel swap.
 
 ## Map integration status
 
