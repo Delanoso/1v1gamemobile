@@ -55,6 +55,12 @@ export class InputManager {
     lethal: false,
     tactical: false,
   }
+  /** One-frame taps from touch HUD (jump/reload/crouch miss a frame if only touchend fires). */
+  private jumpQueued = false
+  private reloadQueued = false
+  private crouchQueued = false
+  /** ADS stays on until toggled off (touch HUD). */
+  private touchAdsOn = false
 
   constructor() {
     window.addEventListener('keydown', (e) => {
@@ -96,6 +102,39 @@ export class InputManager {
     this.touchButtons[button] = pressed
   }
 
+  queueJump(): void {
+    this.jumpQueued = true
+  }
+
+  queueReload(): void {
+    this.reloadQueued = true
+  }
+
+  queueCrouchTap(): void {
+    this.crouchQueued = true
+  }
+
+  toggleTouchAds(): boolean {
+    this.touchAdsOn = !this.touchAdsOn
+    return this.touchAdsOn
+  }
+
+  setTouchAds(on: boolean): void {
+    this.touchAdsOn = on
+  }
+
+  resetTouchState(): void {
+    this.touchMove = { x: 0, y: 0 }
+    this.touchLook = { x: 0, y: 0 }
+    this.jumpQueued = false
+    this.reloadQueued = false
+    this.crouchQueued = false
+    this.touchAdsOn = false
+    for (const k of Object.keys(this.touchButtons) as (keyof typeof this.touchButtons)[]) {
+      this.touchButtons[k] = false
+    }
+  }
+
   sample(dt: number): FrameInput {
     const pad = this.readGamepad(dt)
     const kbMove = this.readKeyboardMove()
@@ -122,14 +161,21 @@ export class InputManager {
     this.mouseLook = { x: 0, y: 0 }
 
     const kb = this.keys
+    const jump = this.touchButtons.jump || pad.jump || kb.has('Space') || this.jumpQueued
+    const reload = this.touchButtons.reload || pad.reload || kb.has('KeyR') || this.reloadQueued
+    const crouch = this.touchButtons.crouch || pad.crouch || kb.has('KeyC') || this.crouchQueued
+    this.jumpQueued = false
+    this.reloadQueued = false
+    this.crouchQueued = false
+
     return {
       move,
       lookDelta,
       fire: this.touchButtons.fire || pad.fire || this.mouseButtons.left,
-      ads: this.touchButtons.ads || pad.ads || this.mouseButtons.right,
-      jump: this.touchButtons.jump || pad.jump || kb.has('Space'),
-      crouch: this.touchButtons.crouch || pad.crouch || kb.has('KeyC'),
-      reload: this.touchButtons.reload || pad.reload || kb.has('KeyR'),
+      ads: this.touchAdsOn || pad.ads || this.mouseButtons.right,
+      jump,
+      crouch,
+      reload,
       sprint: this.touchButtons.sprint || pad.sprint || kb.has('ShiftLeft'),
       lethal: this.touchButtons.lethal || pad.lethal || kb.has('KeyG'),
       tactical: this.touchButtons.tactical || pad.tactical || kb.has('KeyQ'),

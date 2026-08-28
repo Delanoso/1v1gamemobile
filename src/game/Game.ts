@@ -151,6 +151,7 @@ export class Game {
     this.weapon.reset()
     this.kills = 0
     this.reloadWasActive = false
+    this.input.resetTouchState()
     this.player.spawn(this.spawnPoint, this.spawnYaw, this.colliders)
     this.hud.setHealth(this.player.health)
     this.hud.pushFeed('Container yard live — Shipment-style layout')

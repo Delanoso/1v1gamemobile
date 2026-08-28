@@ -365,8 +365,8 @@ body,
   position: absolute;
   top: 0;
   right: 0;
-  width: 58%;
-  height: 70%;
+  width: 62%;
+  height: 100%;
 }
 
 .action-cluster {
@@ -392,6 +392,11 @@ body,
 
 .act.pressed {
   background: rgba(196, 165, 116, 0.45);
+}
+
+.act.ads.active {
+  background: rgba(120, 170, 220, 0.5);
+  border-color: rgba(180, 220, 255, 0.55);
 }
 
 .act.fire {

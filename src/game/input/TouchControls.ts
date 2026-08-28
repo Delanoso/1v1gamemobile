@@ -1,11 +1,14 @@
 import type { InputManager } from './InputManager'
 
+type HoldButton = 'fire' | 'sprint' | 'lethal' | 'tactical'
+
 /** On-screen mobile controls: left stick, right look zone, action cluster. */
 export class TouchControls {
   readonly root: HTMLElement
   private stickKnob: HTMLElement
   private stickTouchId: number | null = null
   private lookTouchId: number | null = null
+  private fireTouchId: number | null = null
   private stickOrigin = { x: 0, y: 0 }
   private lookLast = { x: 0, y: 0 }
   private readonly maxRadius = 54
@@ -37,10 +40,15 @@ export class TouchControls {
     this.bindStick()
     this.bindLook()
     this.bindButtons()
+    this.bindFireAimDrag()
   }
 
   setVisible(visible: boolean): void {
     this.root.style.display = visible ? 'block' : 'none'
+    if (!visible) {
+      this.root.querySelectorAll<HTMLButtonElement>('.act.ads').forEach((btn) => btn.classList.remove('active'))
+      this.root.querySelectorAll<HTMLButtonElement>('.act').forEach((btn) => btn.classList.remove('pressed'))
+    }
   }
 
   private bindStick(): void {
@@ -93,6 +101,14 @@ export class TouchControls {
     this.input.setTouchMove(dx / this.maxRadius, -dy / this.maxRadius)
   }
 
+  private addLookDelta(clientX: number, clientY: number, last: { x: number; y: number }): void {
+    const dx = clientX - last.x
+    const dy = clientY - last.y
+    last.x = clientX
+    last.y = clientY
+    this.input.addTouchLook(dx, dy)
+  }
+
   private bindLook(): void {
     const zone = this.root.querySelector('#look-zone') as HTMLElement
     zone.addEventListener(
@@ -100,6 +116,7 @@ export class TouchControls {
       (e) => {
         if (this.lookTouchId !== null) return
         const t = e.changedTouches[0]
+        if (this.isMoveStickTouch(t.target)) return
         this.lookTouchId = t.identifier
         this.lookLast = { x: t.clientX, y: t.clientY }
         e.preventDefault()
@@ -111,10 +128,7 @@ export class TouchControls {
       (e) => {
         for (const t of Array.from(e.changedTouches)) {
           if (t.identifier !== this.lookTouchId) continue
-          const dx = t.clientX - this.lookLast.x
-          const dy = t.clientY - this.lookLast.y
-          this.lookLast = { x: t.clientX, y: t.clientY }
-          this.input.addTouchLook(dx, dy)
+          this.addLookDelta(t.clientX, t.clientY, this.lookLast)
           e.preventDefault()
         }
       },
@@ -129,17 +143,137 @@ export class TouchControls {
     window.addEventListener('touchcancel', end, { passive: false })
   }
 
+  /** Drag on FIRE while holding — aim and shoot with the same thumb. */
+  private bindFireAimDrag(): void {
+    const fireBtn = this.root.querySelector('[data-btn="fire"]') as HTMLButtonElement
+    const lookLast = { x: 0, y: 0 }
+
+    fireBtn.addEventListener(
+      'touchstart',
+      (e) => {
+        e.preventDefault()
+        const t = e.changedTouches[0]
+        this.fireTouchId = t.identifier
+        lookLast.x = t.clientX
+        lookLast.y = t.clientY
+        this.input.setTouchButton('fire', true)
+        fireBtn.classList.add('pressed')
+      },
+      { passive: false },
+    )
+
+    window.addEventListener(
+      'touchmove',
+      (e) => {
+        for (const t of Array.from(e.changedTouches)) {
+          if (t.identifier !== this.fireTouchId) continue
+          this.addLookDelta(t.clientX, t.clientY, lookLast)
+          e.preventDefault()
+        }
+      },
+      { passive: false },
+    )
+
+    const endFire = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) {
+        if (t.identifier !== this.fireTouchId) continue
+        this.fireTouchId = null
+        this.input.setTouchButton('fire', false)
+        fireBtn.classList.remove('pressed')
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('touchend', endFire, { passive: false })
+    window.addEventListener('touchcancel', endFire, { passive: false })
+
+    fireBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault()
+      this.input.setTouchButton('fire', true)
+      fireBtn.classList.add('pressed')
+    })
+    fireBtn.addEventListener('mouseup', () => {
+      this.input.setTouchButton('fire', false)
+      fireBtn.classList.remove('pressed')
+    })
+    fireBtn.addEventListener('mouseleave', () => {
+      this.input.setTouchButton('fire', false)
+      fireBtn.classList.remove('pressed')
+    })
+  }
+
   private bindButtons(): void {
+    const holdButtons: HoldButton[] = ['sprint', 'lethal', 'tactical']
+
     this.root.querySelectorAll<HTMLButtonElement>('[data-btn]').forEach((btn) => {
-      const key = btn.dataset.btn as Parameters<InputManager['setTouchButton']>[0]
+      const key = btn.dataset.btn!
+      if (key === 'fire') return
+
+      if (key === 'ads') {
+        btn.addEventListener(
+          'touchstart',
+          (e) => {
+            e.preventDefault()
+            const on = this.input.toggleTouchAds()
+            btn.classList.toggle('active', on)
+          },
+          { passive: false },
+        )
+        return
+      }
+
+      if (key === 'jump') {
+        btn.addEventListener(
+          'touchstart',
+          (e) => {
+            e.preventDefault()
+            this.input.queueJump()
+            btn.classList.add('pressed')
+            window.setTimeout(() => btn.classList.remove('pressed'), 120)
+          },
+          { passive: false },
+        )
+        return
+      }
+
+      if (key === 'crouch') {
+        btn.addEventListener(
+          'touchstart',
+          (e) => {
+            e.preventDefault()
+            this.input.queueCrouchTap()
+            btn.classList.add('pressed')
+            window.setTimeout(() => btn.classList.remove('pressed'), 120)
+          },
+          { passive: false },
+        )
+        return
+      }
+
+      if (key === 'reload') {
+        btn.addEventListener(
+          'touchstart',
+          (e) => {
+            e.preventDefault()
+            this.input.queueReload()
+            btn.classList.add('pressed')
+            window.setTimeout(() => btn.classList.remove('pressed'), 120)
+          },
+          { passive: false },
+        )
+        return
+      }
+
+      if (!holdButtons.includes(key as HoldButton)) return
+
+      const holdKey = key as HoldButton
       const down = (e: Event) => {
         e.preventDefault()
-        this.input.setTouchButton(key, true)
+        this.input.setTouchButton(holdKey, true)
         btn.classList.add('pressed')
       }
       const up = (e: Event) => {
         e.preventDefault()
-        this.input.setTouchButton(key, false)
+        this.input.setTouchButton(holdKey, false)
         btn.classList.remove('pressed')
       }
       btn.addEventListener('touchstart', down, { passive: false })
@@ -149,5 +283,12 @@ export class TouchControls {
       btn.addEventListener('mouseup', up)
       btn.addEventListener('mouseleave', up)
     })
+  }
+
+  private isMoveStickTouch(target: EventTarget | null): boolean {
+    return !!(
+      target instanceof Element &&
+      (target.closest('#move-stick') || target.closest('#move-knob'))
+    )
   }
 }

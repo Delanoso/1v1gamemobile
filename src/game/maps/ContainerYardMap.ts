@@ -194,6 +194,7 @@ export function buildContainerYardMap(): BuiltMap {
   const colliders: Collider[] = []
 
   group.add(buildMapGround(48, 36))
+  pushCollider(colliders, 48, 0.1, 36, 0, 0, 0)
 
   addFenceRun(group, colliders, 'x', -17.2, -23, 23, 0)
   addFenceRun(group, colliders, 'x', 17.2, -23, 23, Math.PI)
