@@ -43,9 +43,9 @@ Reload in the lab — it switches from procedural to GLB automatically.
 |---|-------|--------|
 | 1 | Shipping container | Done — review anytime |
 | 2 | Asphalt floor | Done — review anytime |
-| 3 | Chain-link fence | **Active in lab** |
-| 4 | Barrel / pallet | Next |
-| 5 | Full map assembly | After props |
+| 3 | Chain-link fence | Done — review anytime |
+| 4 | Barrel | **Active in lab** |
+| 5 | Full map assembly | Next |
 
 ## Approval checklist (container)
 
@@ -71,4 +71,12 @@ Reload in the lab — it switches from procedural to GLB automatically.
 - [ ] Height/proportions match container yard perimeter
 - [ ] Performance OK on iPad
 
-When you say **"fence approved"**, we lock it and start the barrel lab.
+## Approval checklist (barrel)
+
+- [ ] Reads as industrial 55-gal drum from gameplay distance
+- [ ] Ribs/rims/bungs visible up close
+- [ ] Paint + rust feels weathered, not plastic
+- [ ] Blue / red / green variants look distinct
+- [ ] Performance OK on iPad
+
+When you say **"barrel approved"**, we integrate all lab assets into the container yard map.

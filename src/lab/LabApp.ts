@@ -4,6 +4,7 @@ import { StudioScene } from './StudioScene'
 import { buildContainer } from '../assets/container/ContainerAsset'
 import { buildFloor } from '../assets/floor/FloorAsset'
 import { buildFence } from '../assets/fence/FenceAsset'
+import { buildBarrel, type BarrelColor } from '../assets/barrel/BarrelAsset'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
 export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel'
@@ -15,12 +16,11 @@ const ASSET_LABELS: Record<LabAsset, string> = {
   barrel: 'Barrel',
 }
 
-const ENABLED_ASSETS: LabAsset[] = ['container', 'floor', 'fence']
-
 const GLB_HINTS: Partial<Record<LabAsset, string>> = {
   container: 'public/assets/maps/container-yard/container.glb',
   floor: 'public/assets/maps/container-yard/floor.glb',
   fence: 'public/assets/maps/container-yard/fence.glb',
+  barrel: 'public/assets/maps/container-yard/barrel.glb',
 }
 
 export class LabApp {
@@ -30,8 +30,9 @@ export class LabApp {
   private readonly trisEl: HTMLElement
   private readonly sourceEl: HTMLElement
   private readonly hintEl: HTMLElement
-  private asset: LabAsset = 'fence'
+  private asset: LabAsset = 'barrel'
   private containerColor: ContainerColor = 'red'
+  private barrelColor: BarrelColor = 'blue'
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
@@ -43,7 +44,7 @@ export class LabApp {
     this.panel.className = 'lab-panel'
     this.panel.innerHTML = `
       <p class="lab-eyebrow">ASSET LAB</p>
-      <h1 id="lab-title">Chain-link Fence</h1>
+      <h1 id="lab-title">Barrel</h1>
       <p class="lab-sub">Polish one asset to 100% before it goes in the game.</p>
       <div class="lab-tabs" id="lab-tabs"></div>
       <div class="lab-meta">
@@ -86,19 +87,13 @@ export class LabApp {
       btn.type = 'button'
       btn.textContent = ASSET_LABELS[key]
       btn.className = key === this.asset ? 'active' : ''
-      const enabled = ENABLED_ASSETS.includes(key)
-      if (!enabled) {
-        btn.disabled = true
-        btn.title = 'Coming next'
-      } else {
-        btn.addEventListener('click', () => {
-          this.asset = key
-          tabs.querySelectorAll('button').forEach((b) => b.classList.remove('active'))
-          btn.classList.add('active')
-          this.syncColorSwatches()
-          void this.loadAsset()
-        })
-      }
+      btn.addEventListener('click', () => {
+        this.asset = key
+        tabs.querySelectorAll('button').forEach((b) => b.classList.remove('active'))
+        btn.classList.add('active')
+        this.syncColorSwatches()
+        void this.loadAsset()
+      })
       tabs.appendChild(btn)
     })
   }
@@ -106,27 +101,51 @@ export class LabApp {
   private syncColorSwatches(): void {
     this.colorRow?.remove()
     this.colorRow = null
-    if (this.asset !== 'container') return
 
-    const row = document.createElement('div')
-    row.className = 'lab-colors'
-    const colors: ContainerColor[] = ['red', 'blue', 'green', 'tan']
-    const labels = { red: 'Red', blue: 'Blue', green: 'Green', tan: 'Tan' }
-    colors.forEach((c) => {
-      const b = document.createElement('button')
-      b.type = 'button'
-      b.textContent = labels[c]
-      b.className = `swatch swatch-${c}${c === this.containerColor ? ' active' : ''}`
-      b.addEventListener('click', () => {
-        this.containerColor = c
-        row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
-        b.classList.add('active')
-        void this.loadAsset()
+    if (this.asset === 'container') {
+      const row = document.createElement('div')
+      row.className = 'lab-colors'
+      const colors: ContainerColor[] = ['red', 'blue', 'green', 'tan']
+      const labels = { red: 'Red', blue: 'Blue', green: 'Green', tan: 'Tan' }
+      colors.forEach((c) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = labels[c]
+        b.className = `swatch swatch-${c}${c === this.containerColor ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.containerColor = c
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
       })
-      row.appendChild(b)
-    })
-    this.panel.querySelector('.lab-actions')!.before(row)
-    this.colorRow = row
+      this.panel.querySelector('.lab-actions')!.before(row)
+      this.colorRow = row
+      return
+    }
+
+    if (this.asset === 'barrel') {
+      const row = document.createElement('div')
+      row.className = 'lab-colors'
+      const colors: BarrelColor[] = ['blue', 'red', 'green']
+      const labels = { blue: 'Blue', red: 'Red', green: 'Green' }
+      colors.forEach((c) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = labels[c]
+        b.className = `swatch swatch-${c}${c === this.barrelColor ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.barrelColor = c
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
+      })
+      this.panel.querySelector('.lab-actions')!.before(row)
+      this.colorRow = row
+    }
   }
 
   private async loadAsset(): Promise<void> {
@@ -175,7 +194,17 @@ export class LabApp {
       return
     }
 
-    this.statusEl.textContent = `${ASSET_LABELS[this.asset]} lab opens after fence is approved.`
+    if (this.asset === 'barrel') {
+      const result = await buildBarrel(this.barrelColor)
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? 'Using imported barrel GLB — check paint wear and rim detail.'
+          : 'Procedural v1 — 55-gal drum with ribs, rims, bung caps, rust streaks.'
+      return
+    }
   }
 
   private loop = (): void => {
