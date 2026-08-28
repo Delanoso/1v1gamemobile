@@ -69,6 +69,7 @@ function bodyMat(color: ContainerVariant): THREE.MeshStandardMaterial {
     roughnessMap: rough,
     metalness: 0.32,
     roughness: 0.78,
+    side: THREE.DoubleSide,
   })
 }
 
@@ -173,25 +174,51 @@ function addCasting(parent: THREE.Group, x: number, y: number, z: number): void 
 }
 
 /** Vertical corrugation on a panel in the XY plane (faces +Z before rotation). */
-function buildCorrugatedPanel(
-  width: number,
-  height: number,
-  ribPitch: number,
-  ribDepth: number,
-): THREE.BufferGeometry {
-  const ribs = Math.max(6, Math.round(width / ribPitch))
-  const rows = Math.max(6, Math.round(height / 0.28))
-  const geo = new THREE.PlaneGeometry(width, height, ribs, rows)
+function ribDisplacement(phaseU: number): number {
+  const tri = 1 - Math.abs((phaseU % 1) * 2 - 1)
+  return Math.pow(tri, 0.52)
+}
+
+/** Single closed hull mesh — reliable on mobile (no single-sided plane gaps). */
+function buildCorrugatedHullMesh(
+  L: number,
+  W: number,
+  H: number,
+  mat: THREE.MeshStandardMaterial,
+): THREE.Mesh {
+  const segX = Math.max(8, Math.round(L / RIB_PITCH))
+  const segY = Math.max(6, Math.round(H / 0.28))
+  const segZ = Math.max(4, Math.round(W / RIB_PITCH))
+  const geo = new THREE.BoxGeometry(L, H, W, segX, segY, segZ)
   const pos = geo.attributes.position as THREE.BufferAttribute
+  const halfL = L / 2
+  const halfW = W / 2
+  const eps = 0.02
+
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i)
-    const u = (x + width / 2) / ribPitch
-    const tri = 1 - Math.abs((u % 1) * 2 - 1)
-    const sharp = Math.pow(tri, 0.52)
-    pos.setZ(i, sharp * ribDepth)
+    const z = pos.getZ(i)
+    const ax = Math.abs(x)
+    const az = Math.abs(z)
+    const onXFace = ax >= halfL - eps && az < halfW - eps
+    const onZFace = az >= halfW - eps && ax < halfL - eps
+
+    if (onXFace) {
+      const u = (z + halfW) / RIB_PITCH
+      const d = ribDisplacement(u) * RIB_DEPTH
+      pos.setX(i, x + Math.sign(x) * d)
+    } else if (onZFace) {
+      const u = (x + halfL) / RIB_PITCH
+      const d = ribDisplacement(u) * RIB_DEPTH
+      pos.setZ(i, z + Math.sign(z) * d)
+    }
   }
+
   geo.computeVertexNormals()
-  return geo
+  const hull = new THREE.Mesh(geo, mat)
+  hull.castShadow = true
+  hull.receiveShadow = true
+  return hull
 }
 
 function addCorrugatedHull(
@@ -201,42 +228,7 @@ function addCorrugatedHull(
   H: number,
   mat: THREE.MeshStandardMaterial,
 ): void {
-  const shellT = 0.045
-  const addFace = (mesh: THREE.Mesh) => {
-    mesh.castShadow = true
-    mesh.receiveShadow = true
-    group.add(mesh)
-  }
-
-  const longGeo = buildCorrugatedPanel(L, H, RIB_PITCH, RIB_DEPTH)
-  const shortGeo = buildCorrugatedPanel(W, H, RIB_PITCH, RIB_DEPTH * 0.92)
-
-  const south = new THREE.Mesh(longGeo, mat)
-  south.position.set(0, 0, W / 2)
-  addFace(south)
-
-  const north = new THREE.Mesh(longGeo.clone(), mat)
-  north.position.set(0, 0, -W / 2)
-  north.rotation.y = Math.PI
-  addFace(north)
-
-  const west = new THREE.Mesh(shortGeo, mat)
-  west.position.set(-L / 2, 0, 0)
-  west.rotation.y = -Math.PI / 2
-  addFace(west)
-
-  const eastShell = new THREE.Mesh(shortGeo.clone(), mat)
-  eastShell.position.set(L / 2, 0, 0)
-  eastShell.rotation.y = Math.PI / 2
-  addFace(eastShell)
-
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(L, shellT, W), mat)
-  roof.position.y = H / 2 - shellT / 2
-  addFace(roof)
-
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(L, shellT, W), mat)
-  floor.position.y = -H / 2 + shellT / 2
-  addFace(floor)
+  group.add(buildCorrugatedHullMesh(L, W, H, mat))
 }
 
 /** Corrugated door leaf — reads with hull ribs. */
@@ -252,8 +244,7 @@ function buildCorrugatedDoorLeaf(
   for (let i = 0; i < pos.count; i++) {
     const z = pos.getZ(i)
     const u = (z + leafW / 2) / RIB_PITCH
-    const tri = 1 - Math.abs((u % 1) * 2 - 1)
-    const sharp = Math.pow(tri, 0.52)
+    const sharp = ribDisplacement(u)
     const x = pos.getX(i)
     const outward = x > 0 ? 1 : x < 0 ? -1 : 0
     if (outward !== 0) pos.setX(i, x + outward * sharp * RIB_DEPTH * 0.85)

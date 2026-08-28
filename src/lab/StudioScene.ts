@@ -119,7 +119,12 @@ export class StudioScene {
   }
 
   private fitCamera(object: THREE.Object3D): void {
+    object.updateMatrixWorld(true)
     const box = new THREE.Box3().setFromObject(object)
+    if (!Number.isFinite(box.min.x) || box.isEmpty()) {
+      this.applyOrbit()
+      return
+    }
     const size = box.getSize(new THREE.Vector3())
     const max =
       this.viewMode === 'ground'
@@ -176,6 +181,8 @@ export class StudioScene {
 }
 
 function propEyeLevel(object: THREE.Object3D): number {
+  object.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(object)
-  return -box.min.y
+  if (!Number.isFinite(box.min.y) || box.isEmpty()) return 0
+  return Math.max(0, -box.min.y)
 }

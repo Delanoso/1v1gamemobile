@@ -99,9 +99,9 @@ export function corrugatedNormalMap(): THREE.CanvasTexture {
       const next = ribProfile(phase + 0.04, 0.42)
       const slope = (next - prev) * 2.8
       const i = (y * 512 + x) * 4
-      img.data[i] = 128 + slope * 55
-      img.data[i + 1] = 128 + ridge * 18
-      img.data[i + 2] = 255
+      img.data[i] = Math.max(0, Math.min(255, 128 + slope * 55))
+      img.data[i + 1] = Math.max(0, Math.min(255, 128 + ridge * 18))
+      img.data[i + 2] = Math.max(0, Math.min(255, 220 + ridge * 20))
       img.data[i + 3] = 255
     }
   }
