@@ -280,7 +280,7 @@ export class LabApp {
       this.statusEl.textContent =
         result.source === 'glb'
           ? `Using imported ${variantNames[this.crateVariant]} crate GLB.`
-          : `Procedural v2 — brown wood ${variantLabels[this.crateVariant]}.`
+          : `Procedural v3 — brown wood ${variantLabels[this.crateVariant]}.`
       return
     }
   }

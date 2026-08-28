@@ -6,10 +6,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import {
   crateBracketTexture,
   crateFrameTexture,
-  crateLidTexture,
-  cratePlankNormalMap,
-  cratePlankRoughnessMap,
-  cratePlankTexture,
+  endGrainTexture,
+  plankSlatNormalMap,
+  plankSlatRoughnessMap,
+  plankSlatTexture,
   sideUpDecalTexture,
   stencilDecalTexture,
 } from './CrateTextures'
@@ -62,22 +62,16 @@ function countTriangles(root: THREE.Object3D): number {
   return Math.floor(n)
 }
 
-function woodMat(tone: number, repeat: [number, number] = [1, 1]): THREE.MeshStandardMaterial {
-  const key = `wood-${tone}-${repeat.join(',')}`
+function plankSlatMat(tone: number, seed: number): THREE.MeshStandardMaterial {
+  const key = `slat-${tone}-${seed % 48}`
   let m = matCache.get(key)
   if (!m) {
-    const map = cratePlankTexture(tone)
-    map.repeat.set(repeat[0], repeat[1])
-    const normal = cratePlankNormalMap()
-    normal.repeat.set(repeat[0], repeat[1])
-    const rough = cratePlankRoughnessMap()
-    rough.repeat.set(repeat[0], repeat[1])
     m = new THREE.MeshStandardMaterial({
-      map,
-      normalMap: normal,
-      normalScale: new THREE.Vector2(0.35, 0.35),
-      roughnessMap: rough,
-      roughness: 0.88,
+      map: plankSlatTexture(seed, tone),
+      normalMap: plankSlatNormalMap(seed),
+      normalScale: new THREE.Vector2(0.55, 0.55),
+      roughnessMap: plankSlatRoughnessMap(seed),
+      roughness: 0.86,
       metalness: 0.02,
     })
     matCache.set(key, m)
@@ -85,21 +79,27 @@ function woodMat(tone: number, repeat: [number, number] = [1, 1]): THREE.MeshSta
   return m
 }
 
-function frameMat(): THREE.MeshStandardMaterial {
-  const key = 'frame'
+function endGrainMat(seed: number): THREE.MeshStandardMaterial {
+  const key = `end-${seed % 48}`
   let m = matCache.get(key)
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ map: crateFrameTexture(), roughness: 0.9, metalness: 0.03 })
+    m = new THREE.MeshStandardMaterial({
+      map: endGrainTexture(seed),
+      roughness: 0.92,
+      metalness: 0.01,
+    })
     matCache.set(key, m)
   }
   return m
 }
 
-function lidWoodMat(): THREE.MeshStandardMaterial {
-  const key = 'lid'
+const wornEdgeMat = new THREE.MeshStandardMaterial({ color: 0xb8a080, roughness: 0.94, metalness: 0 })
+
+function frameMat(): THREE.MeshStandardMaterial {
+  const key = 'frame'
   let m = matCache.get(key)
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ map: crateLidTexture(), roughness: 0.86, metalness: 0.02 })
+    m = new THREE.MeshStandardMaterial({ map: crateFrameTexture(), roughness: 0.9, metalness: 0.03 })
     matCache.set(key, m)
   }
   return m
@@ -138,11 +138,105 @@ function addBox(
 }
 
 function addNail(addMesh: (m: THREE.Mesh) => void, x: number, y: number, z: number, axis: 'x' | 'z'): void {
-  const nail = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.005, 0.008, 5), nailMat)
-  if (axis === 'z') nail.rotation.x = Math.PI / 2
-  else nail.rotation.z = Math.PI / 2
-  nail.position.set(x, y, z)
-  addMesh(nail)
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.006, 0.0025, 6), nailMat)
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0028, 0.006, 5), nailMat)
+  if (axis === 'z') {
+    head.rotation.x = shaft.rotation.x = Math.PI / 2
+    head.position.set(x, y, z + 0.002)
+    shaft.position.set(x, y, z - 0.001)
+  } else {
+    head.rotation.z = shaft.rotation.z = Math.PI / 2
+    head.position.set(x + 0.002, y, z)
+    shaft.position.set(x - 0.001, y, z)
+  }
+  addMesh(head)
+  addMesh(shaft)
+}
+
+function addEndGrainCap(
+  addMesh: (m: THREE.Mesh) => void,
+  x: number,
+  y: number,
+  z: number,
+  plankH: number,
+  depth: number,
+  seed: number,
+): void {
+  addBox(addMesh, 0.007, plankH * 0.94, depth * 0.9, x, y, z, endGrainMat(seed))
+}
+
+function addPlankEdgeWear(
+  addMesh: (m: THREE.Mesh) => void,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+): void {
+  addBox(addMesh, w * 0.96, 0.003, 0.006, x, y, z, wornEdgeMat)
+}
+
+function addSplinter(
+  addMesh: (m: THREE.Mesh) => void,
+  x: number,
+  y: number,
+  z: number,
+  seed: number,
+  tone: number,
+): void {
+  const splinter = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022 + (seed % 3) * 0.008, 0.003, 0.007),
+    plankSlatMat(tone, seed + 501),
+  )
+  splinter.position.set(x, y, z)
+  splinter.rotation.z = (seed % 7) * 0.04 - 0.12
+  splinter.rotation.x = (seed % 5) * 0.03
+  addMesh(splinter)
+}
+
+type PlankFace = 'z+' | 'z-' | 'x+' | 'x-'
+
+function addPlank(
+  addMesh: (m: THREE.Mesh) => void,
+  w: number,
+  h: number,
+  d: number,
+  x: number,
+  y: number,
+  z: number,
+  tone: number,
+  seed: number,
+  grainAlong: 'x' | 'z',
+  outerFace?: PlankFace,
+): void {
+  const jx = ((seed % 7) - 3) * 0.0008
+  const jy = ((seed % 5) - 2) * 0.0006
+  const wScale = 0.991 + (seed % 4) * 0.003
+  const hScale = 0.994 + (seed % 3) * 0.002
+  const fw = w * wScale
+  const fh = h * hScale
+
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, d), plankSlatMat(tone, seed))
+  mesh.position.set(x + jx, y + jy, z)
+  addMesh(mesh)
+
+  if (grainAlong === 'x') {
+    addEndGrainCap(addMesh, x - fw / 2 - 0.002, y, z, fh, d, seed + 1)
+    addEndGrainCap(addMesh, x + fw / 2 + 0.002, y, z, fh, d, seed + 2)
+    if (outerFace === 'z+') {
+      addPlankEdgeWear(addMesh, x, y + fh / 2 - 0.001, z + d / 2 + 0.003, fw)
+      if (seed % 4 === 0) addSplinter(addMesh, x + fw * 0.15, y - fh * 0.1, z + d / 2 + 0.005, seed, tone)
+    }
+    if (outerFace === 'z-' && seed % 5 === 1) {
+      addSplinter(addMesh, x - fw * 0.2, y + fh * 0.15, z - d / 2 - 0.005, seed + 11, tone)
+    }
+  } else {
+    addEndGrainCap(addMesh, x, y, z - w / 2 - 0.002, fh, d, seed + 1)
+    addEndGrainCap(addMesh, x, y, z + w / 2 + 0.002, fh, d, seed + 2)
+    if (outerFace === 'x+') {
+      addPlankEdgeWear(addMesh, x + d / 2 + 0.003, y + fh / 2 - 0.001, z, w * wScale)
+      if (seed % 4 === 2) addSplinter(addMesh, x + d / 2 + 0.005, y, z + w * 0.1, seed, tone)
+    }
+  }
 }
 
 function addHorizontalPlankWall(
@@ -155,23 +249,28 @@ function addHorizontalPlankWall(
   yBase: number,
   cz: number,
   along: 'x' | 'z',
-  mat: THREE.Material,
+  tone: number,
+  wallSeed: number,
+  outerFace: PlankFace,
   nails: boolean,
 ): void {
   const plankH = (height - GAP * (count - 1)) / count
   for (let i = 0; i < count; i++) {
     const y = yBase + plankH / 2 + i * (plankH + GAP)
+    const seed = wallSeed * 100 + i
     if (along === 'x') {
-      addBox(addMesh, span, plankH, depth, cx, y, cz, mat)
-      if (nails && i % 2 === 0) {
-        addNail(addMesh, cx - span * 0.3, y, cz + depth * 0.55, 'z')
-        addNail(addMesh, cx + span * 0.3, y, cz + depth * 0.55, 'z')
+      addPlank(addMesh, span, plankH, depth, cx, y, cz, tone, seed, 'x', outerFace)
+      if (nails) {
+        addNail(addMesh, cx - span * 0.32, y, cz + depth * 0.58, 'z')
+        addNail(addMesh, cx + span * 0.32, y, cz + depth * 0.58, 'z')
+        if (i % 3 === 0) addNail(addMesh, cx, y, cz + depth * 0.58, 'z')
       }
     } else {
-      addBox(addMesh, depth, plankH, span, cx, y, cz, mat)
-      if (nails && i % 2 === 0) {
-        addNail(addMesh, cx + depth * 0.55, y, cz - span * 0.3, 'x')
-        addNail(addMesh, cx + depth * 0.55, y, cz + span * 0.3, 'x')
+      addPlank(addMesh, depth, plankH, span, cx, y, cz, tone, seed, 'z', outerFace)
+      if (nails) {
+        addNail(addMesh, cx + depth * 0.58, y, cz - span * 0.32, 'x')
+        addNail(addMesh, cx + depth * 0.58, y, cz + span * 0.32, 'x')
+        if (i % 3 === 0) addNail(addMesh, cx + depth * 0.58, y, cz, 'x')
       }
     }
   }
@@ -183,14 +282,15 @@ function addLidPlankRow(
   span: number,
   depth: number,
   y: number,
-  mat: THREE.Material,
+  tone: number,
 ): void {
   const plankW = (span - GAP * (count - 1)) / count
   for (let i = 0; i < count; i++) {
     const x = -span / 2 + plankW / 2 + i * (plankW + GAP)
-    addBox(addMesh, plankW, PLANK_T + 0.01, depth, x, y, 0, mat)
-    addNail(addMesh, x - plankW * 0.3, y, depth * 0.45, 'z')
-    addNail(addMesh, x + plankW * 0.3, y, depth * 0.45, 'z')
+    const seed = 800 + i * 17
+    addPlank(addMesh, plankW, PLANK_T + 0.01, depth, x, y, 0, tone, seed, 'x')
+    addNail(addMesh, x - plankW * 0.28, y, depth * 0.48, 'z')
+    addNail(addMesh, x + plankW * 0.28, y, depth * 0.48, 'z')
   }
 }
 
@@ -325,14 +425,14 @@ function addLidPlanks(
   w: number,
   d: number,
   y: number,
+  tone: number,
   recessed: boolean,
 ): void {
-  const mat = lidWoodMat()
   const inset = recessed ? 0.07 : 0
   const innerW = w - inset * 2
   const innerD = d - inset * 2
   const count = w > 1.2 ? 5 : 3
-  addLidPlankRow(addMesh, count, innerW, innerD, y, mat)
+  addLidPlankRow(addMesh, count, innerW, innerD, y, tone)
   if (recessed) {
     const rim = frameMat()
     const rimH = 0.06
@@ -362,7 +462,6 @@ function buildPlankCrate(
   const hd = D / 2 - POST
   const yBase = features.skids ? addSkids(addMesh, W / 2, D / 2) : 0
   const bodyH = H
-  const plankMat = woodMat(tone, [1, Math.max(1, Math.round(bodyH / 0.12))])
   const plankRows = Math.max(4, Math.round(bodyH / 0.14))
 
   // Corner posts
@@ -376,17 +475,17 @@ function buildPlankCrate(
   }
 
   // Four plank walls (horizontal boards stacked vertically)
-  addHorizontalPlankWall(addMesh, plankRows, hw * 2, bodyH, PLANK_T, 0, yBase, hd + PLANK_T / 2, 'x', plankMat, true)
-  addHorizontalPlankWall(addMesh, plankRows, hw * 2, bodyH, PLANK_T, 0, yBase, -hd - PLANK_T / 2, 'x', plankMat, true)
-  addHorizontalPlankWall(addMesh, plankRows, hd * 2, bodyH, PLANK_T, -hw - PLANK_T / 2, yBase, 0, 'z', plankMat, true)
-  addHorizontalPlankWall(addMesh, plankRows, hd * 2, bodyH, PLANK_T, hw + PLANK_T / 2, yBase, 0, 'z', plankMat, true)
+  addHorizontalPlankWall(addMesh, plankRows, hw * 2, bodyH, PLANK_T, 0, yBase, hd + PLANK_T / 2, 'x', tone, 1, 'z+', true)
+  addHorizontalPlankWall(addMesh, plankRows, hw * 2, bodyH, PLANK_T, 0, yBase, -hd - PLANK_T / 2, 'x', tone, 2, 'z-', true)
+  addHorizontalPlankWall(addMesh, plankRows, hd * 2, bodyH, PLANK_T, -hw - PLANK_T / 2, yBase, 0, 'z', tone, 3, 'x-', true)
+  addHorizontalPlankWall(addMesh, plankRows, hd * 2, bodyH, PLANK_T, hw + PLANK_T / 2, yBase, 0, 'z', tone, 4, 'x+', true)
 
   // Bottom boards
   const bottomCount = W > 1.2 ? 4 : 3
   const bottomPlankW = (W - POST - GAP * (bottomCount - 1)) / bottomCount
   for (let i = 0; i < bottomCount; i++) {
     const x = -((bottomCount - 1) * (bottomPlankW + GAP)) / 2 + i * (bottomPlankW + GAP)
-    addBox(addMesh, bottomPlankW, PLANK_T, D - POST, x, yBase + PLANK_T / 2, 0, frameMat())
+    addPlank(addMesh, bottomPlankW, PLANK_T, D - POST, x, yBase + PLANK_T / 2, 0, tone, 600 + i, 'x')
   }
 
   // Metal brackets at corners (lower + upper)
@@ -397,7 +496,7 @@ function buildPlankCrate(
     addMetalBracket(addMesh, hw, y, -hd, 'right')
   }
 
-  addLidPlanks(addMesh, W, D, yBase + bodyH + PLANK_T, features.recessedLid ?? false)
+  addLidPlanks(addMesh, W, D, yBase + bodyH + PLANK_T, tone, features.recessedLid ?? false)
 
   if (features.diagonalBrace) addDiagonalBrace(addMesh, hw, yBase, bodyH, hd)
   if (features.ropeHandle) addRopeHandle(addMesh, hw + POST, yBase, bodyH, 'right')
