@@ -75,23 +75,27 @@ export function skullDecalTexture(): THREE.CanvasTexture {
   return tex
 }
 
-/** Vertical wood stave grain. */
+/** Vertical wood grain for barrel body. */
 export function woodStaveTexture(): THREE.CanvasTexture {
-  const [c, ctx] = canvas(128, 512)
+  const [c, ctx] = canvas(256, 512)
   ctx.fillStyle = '#8a6848'
-  ctx.fillRect(0, 0, 128, 512)
-  for (let x = 0; x < 128; x += 3) {
-    const shade = 110 + Math.sin(x * 0.3) * 25 + Math.random() * 15
+  ctx.fillRect(0, 0, 256, 512)
+  for (let x = 0; x < 256; x += 2) {
+    const shade = 105 + Math.sin(x * 0.25) * 22 + Math.random() * 8
     ctx.fillStyle = `rgb(${shade},${shade * 0.78},${shade * 0.55})`
     ctx.fillRect(x, 0, 2, 512)
   }
-  // Knots
-  for (let i = 0; i < 4; i++) {
-    const kx = 20 + Math.random() * 88
-    const ky = 80 + Math.random() * 350
-    ctx.fillStyle = 'rgba(60,40,25,0.35)'
+  // Stave seam lines
+  for (let x = 0; x < 256; x += 32) {
+    ctx.fillStyle = 'rgba(40,28,18,0.35)'
+    ctx.fillRect(x, 0, 2, 512)
+  }
+  for (let i = 0; i < 5; i++) {
+    const kx = 20 + Math.random() * 216
+    const ky = 60 + Math.random() * 380
+    ctx.fillStyle = 'rgba(50,35,22,0.3)'
     ctx.beginPath()
-    ctx.ellipse(kx, ky, 8, 12, 0, 0, Math.PI * 2)
+    ctx.ellipse(kx, ky, 6, 10, 0, 0, Math.PI * 2)
     ctx.fill()
   }
   const tex = new THREE.CanvasTexture(c)

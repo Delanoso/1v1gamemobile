@@ -88,44 +88,50 @@ function addMetalBarrel(addMesh: (m: THREE.Mesh) => void): void {
   addMesh(bung)
 }
 
+function woodRadiusAt(t: number, R: number): number {
+  return R * (0.86 + Math.sin(t * Math.PI) * 0.14)
+}
+
 function addWoodBarrel(addMesh: (m: THREE.Mesh) => void): void {
   const { radius: R, height: H } = BARREL_DIMS
-  const staveMat = new THREE.MeshStandardMaterial({
-    map: woodStaveTexture(),
-    roughness: 0.88,
+  const woodMap = woodStaveTexture()
+  woodMap.repeat.set(3, 1)
+  const bodyMat = new THREE.MeshStandardMaterial({
+    map: woodMap,
+    roughness: 0.9,
     metalness: 0.02,
   })
   const lidMat = new THREE.MeshStandardMaterial({
     map: woodLidTexture(),
-    roughness: 0.9,
+    roughness: 0.92,
     metalness: 0.02,
   })
   const hoop = ironHoopMat()
 
-  // Bulging staves (12 vertical planks)
-  const staveCount = 12
-  const staveW = (2 * Math.PI * R) / staveCount * 0.82
-  for (let i = 0; i < staveCount; i++) {
-    const angle = (i / staveCount) * Math.PI * 2
-    const bulge = 1 + Math.cos(angle * 2) * 0.04
-    const r = R * 0.9 * bulge
-    const stave = new THREE.Mesh(new THREE.BoxGeometry(staveW, H * 0.82, 0.045), staveMat)
-    stave.position.set(Math.cos(angle) * r, H * 0.41, Math.sin(angle) * r)
-    stave.rotation.y = -angle
-    addMesh(stave)
+  // Solid bulging barrel body (lathe profile — no cage gaps)
+  const bodyH = H * 0.86
+  const profile: THREE.Vector2[] = []
+  for (let i = 0; i <= 24; i++) {
+    const t = i / 24
+    profile.push(new THREE.Vector2(woodRadiusAt(t, R), t * bodyH))
   }
+  const body = new THREE.Mesh(new THREE.LatheGeometry(profile, 28), bodyMat)
+  body.position.y = 0.02
+  addMesh(body)
 
-  // Six iron hoops (reference)
-  for (const t of [0.06, 0.2, 0.38, 0.56, 0.74, 0.9]) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(R * 1.02, 0.016, 6, 24), hoop)
+  // Six iron hoops sitting on the bulged surface
+  for (const t of [0.05, 0.2, 0.38, 0.55, 0.72, 0.92]) {
+    const r = woodRadiusAt(t, R) + 0.012
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.018, 8, 28), hoop)
     ring.rotation.x = Math.PI / 2
-    ring.position.y = H * t
+    ring.position.y = t * bodyH + 0.02
     addMesh(ring)
   }
 
-  // Flat wooden lid
-  const lid = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.88, R * 0.9, 0.05, 20), lidMat)
-  lid.position.y = H * 0.92
+  // Flat plank lid flush on top
+  const topR = woodRadiusAt(1, R) * 0.94
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(topR, topR * 1.02, 0.06, 24), lidMat)
+  lid.position.y = bodyH + 0.05
   addMesh(lid)
 }
 
