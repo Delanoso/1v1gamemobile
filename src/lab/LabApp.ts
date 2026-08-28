@@ -2,6 +2,7 @@ import './lab.css'
 import * as THREE from 'three'
 import { StudioScene } from './StudioScene'
 import { buildContainer } from '../assets/container/ContainerAsset'
+import { buildFloor } from '../assets/floor/FloorAsset'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
 export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel'
@@ -13,14 +14,23 @@ const ASSET_LABELS: Record<LabAsset, string> = {
   barrel: 'Barrel',
 }
 
+const ENABLED_ASSETS: LabAsset[] = ['container', 'floor']
+
+const GLB_HINTS: Partial<Record<LabAsset, string>> = {
+  container: 'public/assets/maps/container-yard/container.glb',
+  floor: 'public/assets/maps/container-yard/floor.glb',
+}
+
 export class LabApp {
   private readonly studio: StudioScene
   private readonly panel: HTMLElement
   private readonly statusEl: HTMLElement
   private readonly trisEl: HTMLElement
   private readonly sourceEl: HTMLElement
-  private asset: LabAsset = 'container'
+  private readonly hintEl: HTMLElement
+  private asset: LabAsset = 'floor'
   private containerColor: ContainerColor = 'red'
+  private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
   constructor(host: HTMLElement) {
@@ -31,7 +41,7 @@ export class LabApp {
     this.panel.className = 'lab-panel'
     this.panel.innerHTML = `
       <p class="lab-eyebrow">ASSET LAB</p>
-      <h1 id="lab-title">Shipping Container</h1>
+      <h1 id="lab-title">Asphalt Floor</h1>
       <p class="lab-sub">Polish one asset to 100% before it goes in the game.</p>
       <div class="lab-tabs" id="lab-tabs"></div>
       <div class="lab-meta">
@@ -43,26 +53,26 @@ export class LabApp {
         <button type="button" id="lab-reset">Reset view</button>
         <button type="button" id="lab-reload">Reload asset</button>
       </div>
-      <p class="lab-hint">Drag to rotate · Turntable auto-spin · Drop GLB at<br><code>public/assets/maps/container-yard/container.glb</code></p>
+      <p class="lab-hint" id="lab-hint">Drag to rotate · Turntable auto-spin</p>
     `
     host.appendChild(this.panel)
 
     this.statusEl = this.panel.querySelector('#lab-status')!
     this.trisEl = this.panel.querySelector('#lab-tris')!
     this.sourceEl = this.panel.querySelector('#lab-source')!
+    this.hintEl = this.panel.querySelector('#lab-hint')!
     this.buildTabs()
 
     const params = new URLSearchParams(window.location.search)
     const a = params.get('asset') as LabAsset | null
     if (a && a in ASSET_LABELS) this.asset = a
 
-    this.panel.querySelector('#lab-reset')!.addEventListener('click', () => this.studio.resetView())
+    this.panel.querySelector('#lab-reset')!.addEventListener('click', () =>
+      this.studio.resetView(this.asset === 'floor' ? 'ground' : 'prop'),
+    )
     this.panel.querySelector('#lab-reload')!.addEventListener('click', () => void this.loadAsset())
 
-    if (this.asset === 'container') {
-      this.addColorSwatches()
-    }
-
+    this.syncColorSwatches()
     void this.loadAsset()
     this.loop()
   }
@@ -74,14 +84,16 @@ export class LabApp {
       btn.type = 'button'
       btn.textContent = ASSET_LABELS[key]
       btn.className = key === this.asset ? 'active' : ''
-      if (key !== 'container') {
+      const enabled = ENABLED_ASSETS.includes(key)
+      if (!enabled) {
         btn.disabled = true
-        btn.title = 'Coming next — finish container first'
+        btn.title = 'Coming next'
       } else {
         btn.addEventListener('click', () => {
           this.asset = key
           tabs.querySelectorAll('button').forEach((b) => b.classList.remove('active'))
           btn.classList.add('active')
+          this.syncColorSwatches()
           void this.loadAsset()
         })
       }
@@ -89,7 +101,11 @@ export class LabApp {
     })
   }
 
-  private addColorSwatches(): void {
+  private syncColorSwatches(): void {
+    this.colorRow?.remove()
+    this.colorRow = null
+    if (this.asset !== 'container') return
+
     const row = document.createElement('div')
     row.className = 'lab-colors'
     const colors: ContainerColor[] = ['red', 'blue', 'green', 'tan']
@@ -108,6 +124,7 @@ export class LabApp {
       row.appendChild(b)
     })
     this.panel.querySelector('.lab-actions')!.before(row)
+    this.colorRow = row
   }
 
   private async loadAsset(): Promise<void> {
@@ -115,9 +132,14 @@ export class LabApp {
     title.textContent = ASSET_LABELS[this.asset]
     this.statusEl.textContent = 'Loading…'
 
+    const glbPath = GLB_HINTS[this.asset]
+    this.hintEl.innerHTML = glbPath
+      ? `Drag to rotate · Turntable auto-spin · Drop GLB at<br><code>${glbPath}</code>`
+      : 'Drag to rotate · Turntable auto-spin'
+
     if (this.asset === 'container') {
       const result = await buildContainer(this.containerColor)
-      this.studio.setAsset(result.group)
+      this.studio.setAsset(result.group, 'prop')
       this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
       this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
       this.statusEl.textContent =
@@ -127,7 +149,19 @@ export class LabApp {
       return
     }
 
-    this.statusEl.textContent = `${ASSET_LABELS[this.asset]} lab opens after container is approved.`
+    if (this.asset === 'floor') {
+      const result = await buildFloor()
+      this.studio.setAsset(result.group, 'ground')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? 'Using imported floor GLB — check wetness, cracks, and line wear.'
+          : 'Procedural v1 — MW Shipment-style asphalt with lines, puddles, and curb lip.'
+      return
+    }
+
+    this.statusEl.textContent = `${ASSET_LABELS[this.asset]} lab opens after floor is approved.`
   }
 
   private loop = (): void => {

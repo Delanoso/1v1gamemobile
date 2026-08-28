@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 
+export type StudioViewMode = 'prop' | 'ground'
+
 /** Neutral studio rig for inspecting one asset at a time. */
 export class StudioScene {
   readonly scene = new THREE.Scene()
@@ -7,9 +9,11 @@ export class StudioScene {
   readonly pivot = new THREE.Group()
   readonly renderer: THREE.WebGLRenderer
 
+  private viewMode: StudioViewMode = 'prop'
   private rotY = 0.35
   private rotX = 0.15
   private zoom = 9
+  private lookAtY = 1.3
   private touchId: number | null = null
   private lastTouch = { x: 0, y: 0 }
 
@@ -63,15 +67,22 @@ export class StudioScene {
     this.resize()
   }
 
-  setAsset(object: THREE.Object3D): void {
+  setAsset(object: THREE.Object3D, mode: StudioViewMode = 'prop'): void {
+    this.viewMode = mode
     this.pivot.clear()
-    object.position.y = CONTAINER_EYE_LEVEL(object)
+    if (mode === 'ground') {
+      object.position.y = 0.02
+      this.applyGroundDefaults()
+    } else {
+      object.position.y = propEyeLevel(object)
+      this.applyPropDefaults()
+    }
     this.pivot.add(object)
     this.fitCamera(object)
   }
 
   update(dt: number): void {
-    this.pivot.rotation.y += dt * 0.15
+    this.pivot.rotation.y += dt * (this.viewMode === 'ground' ? 0.08 : 0.15)
     this.applyOrbit()
   }
 
@@ -87,27 +98,43 @@ export class StudioScene {
     this.camera.updateProjectionMatrix()
   }
 
-  resetView(): void {
+  resetView(mode: StudioViewMode = this.viewMode): void {
+    if (mode === 'ground') this.applyGroundDefaults()
+    else this.applyPropDefaults()
+    this.applyOrbit()
+  }
+
+  private applyPropDefaults(): void {
     this.rotY = 0.35
     this.rotX = 0.15
+    this.lookAtY = 1.3
     this.zoom = 9
-    this.applyOrbit()
+  }
+
+  private applyGroundDefaults(): void {
+    this.rotY = 0.55
+    this.rotX = 0.58
+    this.lookAtY = 0.08
+    this.zoom = 11
   }
 
   private fitCamera(object: THREE.Object3D): void {
     const box = new THREE.Box3().setFromObject(object)
     const size = box.getSize(new THREE.Vector3())
-    const max = Math.max(size.x, size.y, size.z)
-    this.zoom = Math.max(6, max * 2.2)
+    const max =
+      this.viewMode === 'ground'
+        ? Math.max(size.x, size.z)
+        : Math.max(size.x, size.y, size.z)
+    this.zoom = Math.max(6, max * (this.viewMode === 'ground' ? 1.6 : 2.2))
     this.applyOrbit()
   }
 
   private applyOrbit(): void {
     const cx = Math.sin(this.rotY) * Math.cos(this.rotX) * this.zoom
-    const cy = Math.sin(this.rotX) * this.zoom + 1.3
+    const cy = Math.sin(this.rotX) * this.zoom + this.lookAtY
     const cz = Math.cos(this.rotY) * Math.cos(this.rotX) * this.zoom
     this.camera.position.set(cx, cy, cz)
-    this.camera.lookAt(0, 1.3, 0)
+    this.camera.lookAt(0, this.lookAtY, 0)
   }
 
   private bindTouch(el: HTMLElement): void {
@@ -148,7 +175,7 @@ export class StudioScene {
   }
 }
 
-function CONTAINER_EYE_LEVEL(object: THREE.Object3D): number {
+function propEyeLevel(object: THREE.Object3D): number {
   const box = new THREE.Box3().setFromObject(object)
   return -box.min.y
 }

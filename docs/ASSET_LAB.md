@@ -41,9 +41,9 @@ Reload in the lab — it switches from procedural to GLB automatically.
 
 | # | Asset | Status |
 |---|-------|--------|
-| 1 | Shipping container | **Active in lab** |
-| 2 | Asphalt floor | Next |
-| 3 | Chain-link fence | Planned |
+| 1 | Shipping container | Done — review anytime |
+| 2 | Asphalt floor | **Active in lab** |
+| 3 | Chain-link fence | Next |
 | 4 | Barrel / pallet | Planned |
 | 5 | Full map assembly | After props |
 
@@ -55,4 +55,12 @@ Reload in the lab — it switches from procedural to GLB automatically.
 - [ ] Performance OK on iPad (< 30k tris ideal)
 - [ ] Colors: red / blue / green / tan variants
 
-When you say **"container approved"**, we lock it and start the floor lab.
+## Approval checklist (floor)
+
+- [ ] Asphalt reads dark, wet, and industrial (MW Shipment yard)
+- [ ] Parking lines visible but worn — not too clean
+- [ ] Puddles catch light without looking like mirrors
+- [ ] Cracks / stains feel natural, not repetitive
+- [ ] Performance OK on iPad
+
+When you say **"floor approved"**, we lock it and start the fence lab.
