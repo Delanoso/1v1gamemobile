@@ -7,41 +7,111 @@ function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContex
   return [c, c.getContext('2d')!]
 }
 
-export type BarrelColor = 'blue' | 'red' | 'green'
+export type BarrelType = 'metal' | 'wood'
 
-const PAINT: Record<BarrelColor, { base: string; accent: string }> = {
-  blue: { base: '#2a4a7a', accent: '#345a8e' },
-  red: { base: '#7a2a2a', accent: '#8e3434' },
-  green: { base: '#2a5a3a', accent: '#346e48' },
-}
-
-export function barrelPaintTexture(color: BarrelColor): THREE.CanvasTexture {
-  const pal = PAINT[color]
+/** Dark industrial metal with subtle wear. */
+export function metalBodyTexture(): THREE.CanvasTexture {
   const [c, ctx] = canvas(512, 512)
-  ctx.fillStyle = pal.base
+  ctx.fillStyle = '#2e3238'
   ctx.fillRect(0, 0, 512, 512)
-
-  // Horizontal scuffs
-  for (let y = 0; y < 512; y += 22) {
-    ctx.fillStyle = y % 44 === 0 ? pal.accent : pal.base
-    ctx.globalAlpha = 0.35
-    ctx.fillRect(0, y, 512, 8)
+  for (let y = 0; y < 512; y += 18) {
+    ctx.fillStyle = y % 36 === 0 ? '#383c44' : '#2a2e34'
+    ctx.globalAlpha = 0.4
+    ctx.fillRect(0, y, 512, 6)
     ctx.globalAlpha = 1
   }
-
-  // Rust streaks at bottom third
-  for (let i = 0; i < 18; i++) {
-    ctx.fillStyle = `rgba(110,65,35,${0.08 + Math.random() * 0.14})`
-    ctx.fillRect(Math.random() * 512, 340 + Math.random() * 170, 40 + Math.random() * 120, 3 + Math.random() * 8)
+  for (let i = 0; i < 3000; i++) {
+    const g = 40 + Math.random() * 30
+    ctx.fillStyle = `rgba(${g},${g},${g + 4},0.06)`
+    ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2)
   }
-
-  // Oil smear
-  ctx.fillStyle = 'rgba(12,14,16,0.2)'
-  ctx.fillRect(80, 180, 200, 40)
-
   const tex = new THREE.CanvasTexture(c)
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
   tex.repeat.set(1, 2)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+/** Worn red band paint for metal drum hoops. */
+export function metalBandTexture(): THREE.CanvasTexture {
+  const [c, ctx] = canvas(256, 64)
+  ctx.fillStyle = '#8a2830'
+  ctx.fillRect(0, 0, 256, 64)
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'
+  for (let x = 0; x < 256; x += 12) {
+    ctx.fillRect(x, 0, 6, 64)
+  }
+  ctx.fillStyle = 'rgba(110,65,35,0.25)'
+  ctx.fillRect(0, 48, 256, 16)
+  const tex = new THREE.CanvasTexture(c)
+  tex.wrapS = THREE.RepeatWrapping
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+/** Skull hazard decal (metal barrel side). */
+export function skullDecalTexture(): THREE.CanvasTexture {
+  const [c, ctx] = canvas(256, 256)
+  ctx.fillStyle = '#8a2830'
+  ctx.fillRect(0, 0, 256, 256)
+  ctx.fillStyle = '#1a1c20'
+  // Skull
+  ctx.beginPath()
+  ctx.ellipse(128, 108, 52, 58, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.moveTo(88, 145)
+  ctx.lineTo(100, 185)
+  ctx.lineTo(156, 185)
+  ctx.lineTo(168, 145)
+  ctx.fill()
+  ctx.fillStyle = '#2a1010'
+  ctx.beginPath()
+  ctx.ellipse(108, 100, 14, 18, 0, 0, Math.PI * 2)
+  ctx.ellipse(148, 100, 14, 18, 0, 0, Math.PI * 2)
+  ctx.fill()
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+/** Vertical wood stave grain. */
+export function woodStaveTexture(): THREE.CanvasTexture {
+  const [c, ctx] = canvas(128, 512)
+  ctx.fillStyle = '#8a6848'
+  ctx.fillRect(0, 0, 128, 512)
+  for (let x = 0; x < 128; x += 3) {
+    const shade = 110 + Math.sin(x * 0.3) * 25 + Math.random() * 15
+    ctx.fillStyle = `rgb(${shade},${shade * 0.78},${shade * 0.55})`
+    ctx.fillRect(x, 0, 2, 512)
+  }
+  // Knots
+  for (let i = 0; i < 4; i++) {
+    const kx = 20 + Math.random() * 88
+    const ky = 80 + Math.random() * 350
+    ctx.fillStyle = 'rgba(60,40,25,0.35)'
+    ctx.beginPath()
+    ctx.ellipse(kx, ky, 8, 12, 0, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  const tex = new THREE.CanvasTexture(c)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+/** Wood lid plank pattern. */
+export function woodLidTexture(): THREE.CanvasTexture {
+  const [c, ctx] = canvas(512, 512)
+  ctx.fillStyle = '#9a7858'
+  ctx.fillRect(0, 0, 512, 512)
+  for (let y = 0; y < 512; y += 64) {
+    ctx.fillStyle = y % 128 === 0 ? '#a88868' : '#8a6848'
+    ctx.fillRect(0, y, 512, 58)
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'
+    ctx.fillRect(0, y + 58, 512, 6)
+  }
+  const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
   return tex
 }
@@ -54,26 +124,6 @@ export function barrelRoughnessMap(): THREE.CanvasTexture {
     ctx.fillStyle = y % 32 === 0 ? '#c0c0c0' : '#909090'
     ctx.fillRect(0, y, 256, 8)
   }
-  const tex = new THREE.CanvasTexture(c)
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(1, 2)
-  return tex
-}
-
-export function barrelNormalMap(): THREE.CanvasTexture {
-  const [c, ctx] = canvas(256, 256)
-  const img = ctx.createImageData(256, 256)
-  for (let y = 0; y < 256; y++) {
-    for (let x = 0; x < 256; x++) {
-      const ridge = Math.sin((y / 256) * Math.PI * 24) * 0.5 + 0.5
-      const i = (y * 256 + x) * 4
-      img.data[i] = 128 + ridge * 20
-      img.data[i + 1] = 128 + ridge * 10
-      img.data[i + 2] = 255
-      img.data[i + 3] = 255
-    }
-  }
-  ctx.putImageData(img, 0, 0)
   const tex = new THREE.CanvasTexture(c)
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
   tex.repeat.set(1, 2)

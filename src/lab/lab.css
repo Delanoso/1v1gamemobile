@@ -109,6 +109,8 @@ body,
   color: #fff;
 }
 
+.lab-colors .swatch-metal { background: #3a4048; color: #e8ecf0; }
+.lab-colors .swatch-wood { background: #7a5a38; color: #fff; }
 .lab-colors .swatch-red { background: #8b2e28; }
 .lab-colors .swatch-blue { background: #2a4a6a; }
 .lab-colors .swatch-green { background: #3a5a40; }

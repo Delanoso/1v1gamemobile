@@ -4,7 +4,7 @@ import { StudioScene } from './StudioScene'
 import { buildContainer } from '../assets/container/ContainerAsset'
 import { buildFloor } from '../assets/floor/FloorAsset'
 import { buildFence } from '../assets/fence/FenceAsset'
-import { buildBarrel, type BarrelColor } from '../assets/barrel/BarrelAsset'
+import { buildBarrel, type BarrelType } from '../assets/barrel/BarrelAsset'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
 export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel'
@@ -20,7 +20,7 @@ const GLB_HINTS: Partial<Record<LabAsset, string>> = {
   container: 'public/assets/maps/container-yard/container.glb',
   floor: 'public/assets/maps/container-yard/floor.glb',
   fence: 'public/assets/maps/container-yard/fence.glb',
-  barrel: 'public/assets/maps/container-yard/barrel.glb',
+  barrel: 'public/assets/maps/container-yard/barrel-metal.glb · barrel-wood.glb',
 }
 
 export class LabApp {
@@ -32,7 +32,7 @@ export class LabApp {
   private readonly hintEl: HTMLElement
   private asset: LabAsset = 'barrel'
   private containerColor: ContainerColor = 'red'
-  private barrelColor: BarrelColor = 'blue'
+  private barrelType: BarrelType = 'metal'
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
@@ -128,15 +128,15 @@ export class LabApp {
     if (this.asset === 'barrel') {
       const row = document.createElement('div')
       row.className = 'lab-colors'
-      const colors: BarrelColor[] = ['blue', 'red', 'green']
-      const labels = { blue: 'Blue', red: 'Red', green: 'Green' }
-      colors.forEach((c) => {
+      const types: BarrelType[] = ['metal', 'wood']
+      const labels = { metal: 'Metal', wood: 'Wood' }
+      types.forEach((t) => {
         const b = document.createElement('button')
         b.type = 'button'
-        b.textContent = labels[c]
-        b.className = `swatch swatch-${c}${c === this.barrelColor ? ' active' : ''}`
+        b.textContent = labels[t]
+        b.className = `swatch swatch-${t}${t === this.barrelType ? ' active' : ''}`
         b.addEventListener('click', () => {
-          this.barrelColor = c
+          this.barrelType = t
           row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
           b.classList.add('active')
           void this.loadAsset()
@@ -195,14 +195,16 @@ export class LabApp {
     }
 
     if (this.asset === 'barrel') {
-      const result = await buildBarrel(this.barrelColor)
+      const result = await buildBarrel(this.barrelType)
       this.studio.setAsset(result.group, 'prop')
       this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
       this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
       this.statusEl.textContent =
         result.source === 'glb'
-          ? 'Using imported barrel GLB — check paint wear and rim detail.'
-          : 'Procedural v1 — 55-gal drum with ribs, rims, bung caps, rust streaks.'
+          ? `Using imported ${this.barrelType} barrel GLB.`
+          : this.barrelType === 'wood'
+            ? 'Procedural v2 — wooden stave barrel with iron hoops and plank lid.'
+            : 'Procedural v2 — dark metal drum with red bands and skull decal.'
       return
     }
   }

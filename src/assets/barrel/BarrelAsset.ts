@@ -1,15 +1,26 @@
 /**
- * Industrial oil drum — single source of truth for yard prop barrels.
+ * Yard prop barrels — metal industrial drum + wooden stave barrel.
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { barrelNormalMap, barrelPaintTexture, barrelRoughnessMap, type BarrelColor } from './BarrelTextures'
+import {
+  barrelRoughnessMap,
+  metalBandTexture,
+  metalBodyTexture,
+  skullDecalTexture,
+  woodLidTexture,
+  woodStaveTexture,
+  type BarrelType,
+} from './BarrelTextures'
 
 export const BARREL_DIMS = { radius: 0.28, height: 0.9 } as const
 
-const GLB_PATH = '/assets/maps/container-yard/barrel.glb'
+const GLB_PATHS: Record<BarrelType, string> = {
+  metal: '/assets/maps/container-yard/barrel-metal.glb',
+  wood: '/assets/maps/container-yard/barrel-wood.glb',
+}
 
-export type { BarrelColor }
+export type { BarrelType }
 
 export interface BarrelBuildResult {
   group: THREE.Group
@@ -29,91 +40,127 @@ function countTriangles(root: THREE.Object3D): number {
   return Math.floor(n)
 }
 
-function steelMat(): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color: 0x6a7078, metalness: 0.85, roughness: 0.35 })
+function ironHoopMat(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: 0x3a4048, metalness: 0.88, roughness: 0.42 })
 }
 
-function bodyMat(color: BarrelColor): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({
-    map: barrelPaintTexture(color),
-    roughnessMap: barrelRoughnessMap(),
-    normalMap: barrelNormalMap(),
-    normalScale: new THREE.Vector2(0.25, 0.25),
-    metalness: 0.35,
-    roughness: 0.62,
-  })
-}
-
-function addSingleBarrel(color: BarrelColor, addMesh: (m: THREE.Mesh) => void): void {
+function addMetalBarrel(addMesh: (m: THREE.Mesh) => void): void {
   const { radius: R, height: H } = BARREL_DIMS
-  const body = bodyMat(color)
-  const steel = steelMat()
+  const body = new THREE.MeshStandardMaterial({
+    map: metalBodyTexture(),
+    roughnessMap: barrelRoughnessMap(),
+    metalness: 0.55,
+    roughness: 0.58,
+  })
+  const band = new THREE.MeshStandardMaterial({
+    map: metalBandTexture(),
+    metalness: 0.4,
+    roughness: 0.68,
+  })
 
   const drum = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H * 0.88, 20), body)
   drum.position.y = H * 0.44
   addMesh(drum)
 
-  for (const y of [H * 0.88, H * 0.04]) {
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(R * 1.02, 0.022, 8, 24), steel)
-    rim.rotation.x = Math.PI / 2
-    rim.position.y = y
-    addMesh(rim)
-  }
-
-  for (const t of [0.22, 0.42, 0.62, 0.78]) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(R * 1.01, 0.014, 6, 24), steel)
+  // Five red reinforcement bands (reference)
+  for (const t of [0.04, 0.22, 0.44, 0.66, 0.88]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R * 1.03, 0.02, 6, 24), band)
     ring.rotation.x = Math.PI / 2
     ring.position.y = H * t
     addMesh(ring)
   }
 
-  const lid = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.96, R * 0.98, 0.04, 20), steel)
-  lid.position.y = H * 0.9
-  addMesh(lid)
+  // Skull hazard decal
+  const decal = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.42, 0.42),
+    new THREE.MeshStandardMaterial({
+      map: skullDecalTexture(),
+      roughness: 0.9,
+      metalness: 0.1,
+    }),
+  )
+  decal.position.set(0, H * 0.48, R + 0.02)
+  addMesh(decal)
 
-  for (const [x, z] of [
-    [0.09, 0.06],
-    [-0.07, -0.08],
-  ] as const) {
-    const bung = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.05, 8), steel)
-    bung.position.set(x, H * 0.93, z)
-    addMesh(bung)
-    const plug = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.02, 8), steel)
-    plug.position.set(x, H * 0.96, z)
-    addMesh(plug)
-  }
+  // End-cap bung
+  const bung = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 8), ironHoopMat())
+  bung.position.set(0.08, H * 0.92, 0.06)
+  addMesh(bung)
 }
 
-export function buildProceduralBarrel(color: BarrelColor = 'blue'): BarrelBuildResult {
+function addWoodBarrel(addMesh: (m: THREE.Mesh) => void): void {
+  const { radius: R, height: H } = BARREL_DIMS
+  const staveMat = new THREE.MeshStandardMaterial({
+    map: woodStaveTexture(),
+    roughness: 0.88,
+    metalness: 0.02,
+  })
+  const lidMat = new THREE.MeshStandardMaterial({
+    map: woodLidTexture(),
+    roughness: 0.9,
+    metalness: 0.02,
+  })
+  const hoop = ironHoopMat()
+
+  // Bulging staves (12 vertical planks)
+  const staveCount = 12
+  const staveW = (2 * Math.PI * R) / staveCount * 0.82
+  for (let i = 0; i < staveCount; i++) {
+    const angle = (i / staveCount) * Math.PI * 2
+    const bulge = 1 + Math.cos(angle * 2) * 0.04
+    const r = R * 0.9 * bulge
+    const stave = new THREE.Mesh(new THREE.BoxGeometry(staveW, H * 0.82, 0.045), staveMat)
+    stave.position.set(Math.cos(angle) * r, H * 0.41, Math.sin(angle) * r)
+    stave.rotation.y = -angle
+    addMesh(stave)
+  }
+
+  // Six iron hoops (reference)
+  for (const t of [0.06, 0.2, 0.38, 0.56, 0.74, 0.9]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R * 1.02, 0.016, 6, 24), hoop)
+    ring.rotation.x = Math.PI / 2
+    ring.position.y = H * t
+    addMesh(ring)
+  }
+
+  // Flat wooden lid
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.88, R * 0.9, 0.05, 20), lidMat)
+  lid.position.y = H * 0.92
+  addMesh(lid)
+}
+
+export function buildProceduralBarrel(type: BarrelType = 'metal'): BarrelBuildResult {
   const group = new THREE.Group()
   const addMesh = (mesh: THREE.Mesh) => {
     mesh.castShadow = true
     mesh.receiveShadow = true
     group.add(mesh)
   }
-  addSingleBarrel(color, addMesh)
+  if (type === 'wood') addWoodBarrel(addMesh)
+  else addMetalBarrel(addMesh)
   return { group, source: 'procedural', triangleCount: countTriangles(group) }
 }
 
-export function buildBarrelCluster(color: BarrelColor = 'blue'): BarrelBuildResult {
+/** Mixed metal + wood cluster for map placement. */
+export function buildBarrelCluster(): BarrelBuildResult {
   const group = new THREE.Group()
-  const offsets: [number, number][] = [
-    [0, 0],
-    [0.55, 0.2],
-    [-0.45, 0.35],
+  const placements: [BarrelType, number, number][] = [
+    ['metal', 0, 0],
+    ['metal', 0.55, 0.2],
+    ['wood', -0.45, 0.35],
   ]
-  for (const [ox, oz] of offsets) {
-    const cluster = buildProceduralBarrel(color).group
-    cluster.position.set(ox, 0, oz)
-    group.add(cluster)
+  for (const [type, ox, oz] of placements) {
+    const barrel = buildProceduralBarrel(type).group
+    barrel.position.set(ox, 0, oz)
+    group.add(barrel)
   }
   return { group, source: 'procedural', triangleCount: countTriangles(group) }
 }
 
-export async function buildBarrel(color: BarrelColor = 'blue'): Promise<BarrelBuildResult> {
+export async function buildBarrel(type: BarrelType = 'metal'): Promise<BarrelBuildResult> {
   try {
     const loader = new GLTFLoader()
-    const gltf = await loader.loadAsync(GLB_PATH)
+    const gltf = await loader.loadAsync(GLB_PATHS[type])
     const model = gltf.scene.clone()
     model.traverse((o) => {
       if (o instanceof THREE.Mesh) {
@@ -132,6 +179,6 @@ export async function buildBarrel(color: BarrelColor = 'blue'): Promise<BarrelBu
     group.add(model)
     return { group, source: 'glb', triangleCount: countTriangles(group) }
   } catch {
-    return buildProceduralBarrel(color)
+    return buildProceduralBarrel(type)
   }
 }

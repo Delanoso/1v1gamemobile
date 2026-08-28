@@ -73,10 +73,9 @@ Reload in the lab — it switches from procedural to GLB automatically.
 
 ## Approval checklist (barrel)
 
-- [ ] Reads as industrial 55-gal drum from gameplay distance
-- [ ] Ribs/rims/bungs visible up close
-- [ ] Paint + rust feels weathered, not plastic
-- [ ] Blue / red / green variants look distinct
+- [ ] Metal: dark drum, red bands, skull decal reads at distance
+- [ ] Wood: staves, hoops, and lid feel rustic — not plastic
+- [ ] Both types sit at same scale for map clusters
 - [ ] Performance OK on iPad
 
 When you say **"barrel approved"**, we integrate all lab assets into the container yard map.
