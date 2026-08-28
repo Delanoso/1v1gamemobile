@@ -5,16 +5,20 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import {
+  CONTAINER_RIB_DEPTH,
+  CONTAINER_RIB_PITCH,
   corrugatedNormalMap,
   corrugatedRoughnessMap,
   hazardStripeTexture,
+  squareRibProfile,
   weatheredPaintTexture,
 } from './ContainerTextures'
 
 export const CONTAINER_DIMS = { length: 6, width: 2.4, height: 2.6 } as const
-/** ISO-style vertical rib spacing on long panels (~148 mm). */
-const RIB_PITCH = 0.148
-const RIB_DEPTH = 0.016
+const RIB_PITCH = CONTAINER_RIB_PITCH
+const RIB_DEPTH = CONTAINER_RIB_DEPTH
+/** Segments per rib period — keeps flat crests and valleys readable. */
+const RIB_SEGMENTS = 5
 
 const GLB_PATH = '/assets/maps/container-yard/container.glb'
 
@@ -65,7 +69,7 @@ function bodyMat(color: ContainerVariant): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
     map,
     normalMap: normal,
-    normalScale: new THREE.Vector2(0.55, 0.38),
+    normalScale: new THREE.Vector2(0.38, 0.28),
     roughnessMap: rough,
     metalness: 0.32,
     roughness: 0.78,
@@ -173,10 +177,9 @@ function addCasting(parent: THREE.Group, x: number, y: number, z: number): void 
   parent.add(g)
 }
 
-/** Vertical corrugation on a panel in the XY plane (faces +Z before rotation). */
+/** Square/trapezoid rib displacement 0–1 → meters. */
 function ribDisplacement(phaseU: number): number {
-  const tri = 1 - Math.abs((phaseU % 1) * 2 - 1)
-  return Math.pow(tri, 0.52)
+  return squareRibProfile(phaseU) * RIB_DEPTH
 }
 
 /** Single closed hull mesh — reliable on mobile (no single-sided plane gaps). */
@@ -186,9 +189,11 @@ function buildCorrugatedHullMesh(
   H: number,
   mat: THREE.MeshStandardMaterial,
 ): THREE.Mesh {
-  const segX = Math.max(8, Math.round(L / RIB_PITCH))
-  const segY = Math.max(6, Math.round(H / 0.28))
-  const segZ = Math.max(4, Math.round(W / RIB_PITCH))
+  const ribsAlongL = Math.max(4, Math.round(L / RIB_PITCH))
+  const ribsAlongW = Math.max(3, Math.round(W / RIB_PITCH))
+  const segX = Math.min(ribsAlongL * RIB_SEGMENTS, 90)
+  const segY = 8
+  const segZ = Math.min(ribsAlongW * RIB_SEGMENTS, 45)
   const geo = new THREE.BoxGeometry(L, H, W, segX, segY, segZ)
   const pos = geo.attributes.position as THREE.BufferAttribute
   const halfL = L / 2
@@ -238,16 +243,16 @@ function buildCorrugatedDoorLeaf(
   leafW: number,
   mat: THREE.MeshStandardMaterial,
 ): THREE.Mesh {
-  const ribs = Math.max(4, Math.round(leafW / RIB_PITCH))
-  const geo = new THREE.BoxGeometry(depth, doorH, leafW, 1, 6, ribs)
+  const ribs = Math.max(3, Math.round(leafW / RIB_PITCH)) * RIB_SEGMENTS
+  const geo = new THREE.BoxGeometry(depth, doorH, leafW, 1, 8, ribs)
   const pos = geo.attributes.position as THREE.BufferAttribute
   for (let i = 0; i < pos.count; i++) {
     const z = pos.getZ(i)
     const u = (z + leafW / 2) / RIB_PITCH
-    const sharp = ribDisplacement(u)
+    const d = ribDisplacement(u)
     const x = pos.getX(i)
     const outward = x > 0 ? 1 : x < 0 ? -1 : 0
-    if (outward !== 0) pos.setX(i, x + outward * sharp * RIB_DEPTH * 0.85)
+    if (outward !== 0) pos.setX(i, x + outward * d * 0.92)
   }
   geo.computeVertexNormals()
   return new THREE.Mesh(geo, mat)

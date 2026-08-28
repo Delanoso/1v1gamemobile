@@ -238,7 +238,7 @@ export class LabApp {
       this.statusEl.textContent =
         result.source === 'glb'
           ? 'Using imported GLB — rotate and review on iPad.'
-          : 'Procedural v2 — corrugated hull panels, stronger rib normals, door corrugation.'
+          : 'Procedural v3 — large square corrugation (225 mm pitch, trapezoid ribs).'
       return
     }
 
