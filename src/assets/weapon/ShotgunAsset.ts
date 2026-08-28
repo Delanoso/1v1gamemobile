@@ -1,9 +1,9 @@
 /**
- * Pump shotgun — lathe-based silhouette (not box stacks).
- * +Z rear, −Z front. Receiver z ∈ [−0.11, 0.11].
+ * Pump shotgun — extruded stock/pump silhouettes + cylindrical barrels.
+ * Side profile extrusion gives a real comb (not a symmetric lathe "bat").
  */
 import * as THREE from 'three'
-import { barrelZ, boxW, revolveZ, ringZ, triggerGuard } from './WeaponGeometry'
+import { barrelZ, boxW, extrudeYZ, ringZ, triggerGuard } from './WeaponGeometry'
 import {
   weaponBluedMat,
   weaponBrassMat,
@@ -17,11 +17,6 @@ import {
 
 type Add = (mesh: THREE.Mesh) => void
 
-/** Single lathe body from a [z, radius] profile. */
-function body(profile: ReadonlyArray<readonly [number, number]>, segs: number, mat: THREE.Material, add: Add): void {
-  add(revolveZ(profile, segs, mat))
-}
-
 export function buildShotgunMeshes(add: Add): void {
   const metal = weaponMetalMat(1)
   const dark = weaponBluedMat()
@@ -29,155 +24,105 @@ export function buildShotgunMeshes(add: Add): void {
   const woodDark = weaponWoodMat(3)
   const shield = weaponHeatShieldMat()
 
-  // ── Receiver (lathe bulk, merges into stock + barrels) ───────────────────
-  body(
-    [
-      [-0.11, 0.036],
-      [-0.04, 0.048],
-      [0.04, 0.05],
-      [0.11, 0.044],
-    ],
-    24,
-    dark,
-    add,
+  const barrelY = 0.052
+  const tubeY = 0.016
+  const midY = (barrelY + tubeY) / 2
+
+  // ── Stock (extruded side profile — comb on top only) ─────────────────────
+  add(
+    extrudeYZ(
+      [
+        [0.1, 0.008],
+        [0.1, 0.088],
+        [0.22, 0.1],
+        [0.34, 0.128],
+        [0.48, 0.118],
+        [0.58, 0.1],
+        [0.62, 0.088],
+        [0.62, 0.008],
+      ],
+      0.078,
+      wood,
+    ),
   )
 
-  // Top cover / rail
-  const cover = revolveZ(
-    [
-      [-0.1, 0.012],
-      [0.1, 0.014],
-    ],
-    12,
-    metal,
-  )
-  cover.position.y = 0.048
-  add(cover)
-
-  // Barrel cluster collar at receiver front
-  add(ringZ(0.028, 0.007, metal, -0.11, 0.032))
-
-  // Ejection port (+X)
-  add(boxW(0.012, 0.036, 0.068, weaponPolyMat(0x0a0c10), 0.05, 0.058, 0.01))
-  add(boxW(0.008, 0.028, 0.036, metal, 0.046, 0.056, 0.01))
-
-  add(boxW(0.05, 0.01, 0.074, weaponPolyMat(0x0a0c10), 0, 0.012, 0))
-  add(triggerGuard(dark, 0.02, 1.2))
-  add(boxW(0.007, 0.022, 0.012, metal, 0, -0.02, 0.02))
-  add(boxW(0.03, 0.01, 0.036, weaponPolyMat(0x1a1c20), 0, 0.108, 0.07))
-  add(boxW(0.02, 0.02, 0.012, metal, 0, 0.1, 0.04))
-
-  // ── Stock (one wood lathe — comb + wrist + butt) ─────────────────────────
-  body(
-    [
-      [0.11, 0.044],
-      [0.17, 0.046],
-      [0.24, 0.042],
-      [0.3, 0.048],
-      [0.38, 0.054],
-      [0.46, 0.05],
-      [0.54, 0.044],
-      [0.6, 0.038],
-    ],
-    28,
-    wood,
-    add,
-  )
-
-  // Rubber buttpad (lathe cap)
-  body(
-    [
-      [0.6, 0.038],
-      [0.64, 0.042],
-    ],
-    16,
-    weaponRubberMat(),
-    add,
-  )
-
-  // Cheek riser (left side sits on comb)
-  add(boxW(0.055, 0.032, 0.12, dark, -0.02, 0.1, 0.32))
-  for (const x of [-0.042, -0.002]) {
-    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.018, 10), metal)
-    knob.position.set(x, 0.118, 0.32)
+  add(boxW(0.08, 0.1, 0.032, weaponRubberMat(), 0, 0.048, 0.636))
+  add(boxW(0.058, 0.03, 0.11, dark, -0.01, 0.118, 0.32))
+  for (const x of [-0.038, 0.002]) {
+    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.016, 10), metal)
+    knob.position.set(x, 0.136, 0.32)
     add(knob)
   }
+  add(boxW(0.078, 0.035, 0.08, weaponTapeMat(), 0, 0.04, 0.46))
+  add(boxW(0.042, 0.01, 0.055, weaponTapeMat(0x2e6ec8), 0, 0.1, 0.16))
 
-  add(boxW(0.08, 0.038, 0.085, weaponTapeMat(), 0, 0.042, 0.48))
-  add(boxW(0.045, 0.01, 0.06, weaponTapeMat(0x2e6ec8), 0, 0.095, 0.17))
+  // ── Receiver ─────────────────────────────────────────────────────────────
+  add(boxW(0.09, 0.098, 0.2, dark, 0, 0.052, 0))
+  add(boxW(0.084, 0.016, 0.18, metal, 0, 0.1, -0.01))
 
-  // ── Twin barrels (shared axis, flush to receiver) ────────────────────────
-  const barrelY = 0.048
-  const tubeY = 0.014
-  add(barrelZ(0.017, 0.017, 0.6, 20, metal, -0.36, barrelY))
-  add(barrelZ(0.013, 0.013, 0.56, 18, dark, -0.36, tubeY))
+  add(boxW(0.01, 0.034, 0.064, weaponPolyMat(0x0a0c10), 0.048, 0.062, 0.01))
+  add(boxW(0.048, 0.01, 0.07, weaponPolyMat(0x0a0c10), 0, 0.01, 0))
+  add(triggerGuard(dark, 0.02, 1.15))
+  add(boxW(0.007, 0.02, 0.01, metal, 0, -0.022, 0.02))
+  add(boxW(0.028, 0.01, 0.032, weaponPolyMat(0x1a1c20), 0, 0.108, 0.06))
+  add(boxW(0.018, 0.018, 0.01, metal, 0, 0.1, 0.02))
 
-  for (const z of [-0.1, -0.28, -0.46, -0.62]) {
-    add(ringZ(0.023, 0.004, metal, z, (barrelY + tubeY) / 2))
+  add(ringZ(0.026, 0.006, metal, -0.1, midY))
+
+  // ── Barrels ──────────────────────────────────────────────────────────────
+  add(barrelZ(0.017, 0.017, 0.58, 20, metal, -0.35, barrelY))
+  add(barrelZ(0.013, 0.013, 0.54, 18, dark, -0.35, tubeY))
+  for (const z of [-0.08, -0.26, -0.44, -0.58]) {
+    add(ringZ(0.022, 0.0035, metal, z, midY))
   }
-  add(barrelZ(0.015, 0.013, 0.026, 10, metal, -0.64, tubeY))
+  add(barrelZ(0.014, 0.012, 0.024, 10, metal, -0.62, tubeY))
 
-  // Heat shield — flat vented channel ON TOP of barrel only
-  const shieldMesh = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.022, 0.46), shield)
-  shieldMesh.position.set(0, barrelY + 0.022, -0.34)
+  const shieldMesh = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.018, 0.44), shield)
+  shieldMesh.position.set(0, barrelY + 0.018, -0.33)
   add(shieldMesh)
 
-  for (let row = 0; row < 2; row++) {
-    for (let i = 0; i < 7; i++) {
-      add(
-        boxW(
-          0.016,
-          0.012,
-          0.028,
-          weaponPolyMat(0x1a1e22),
-          row === 0 ? -0.01 : 0.01,
-          barrelY + 0.028,
-          -0.16 - i * 0.055,
-        ),
-      )
-    }
-  }
-
   const bead = new THREE.Mesh(new THREE.SphereGeometry(0.005, 10, 10), metal)
-  bead.position.set(0, barrelY + 0.018, -0.68)
+  bead.position.set(0, barrelY + 0.014, -0.66)
   add(bead)
 
-  // ── Pump (wood lathe + grip rings) ───────────────────────────────────────
-  body(
-    [
-      [-0.1, 0.046],
-      [-0.18, 0.05],
-      [-0.28, 0.048],
-      [-0.34, 0.044],
-    ],
-    24,
-    wood,
-    add,
+  // ── Pump (extruded wrap under barrels) ───────────────────────────────────
+  add(
+    extrudeYZ(
+      [
+        [-0.09, tubeY - 0.004],
+        [-0.09, barrelY + 0.018],
+        [-0.28, barrelY + 0.024],
+        [-0.33, barrelY + 0.018],
+        [-0.33, tubeY - 0.004],
+      ],
+      0.088,
+      wood,
+    ),
   )
 
-  for (let i = 0; i < 10; i++) {
-    const g = new THREE.Mesh(new THREE.TorusGeometry(0.049, 0.003, 4, 24), woodDark)
+  for (let i = 0; i < 9; i++) {
+    const g = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.0028, 4, 22), woodDark)
     g.rotation.y = Math.PI / 2
-    g.position.set(0, (barrelY + tubeY) / 2, -0.22 - i * 0.018)
+    g.position.set(0, midY, -0.2 - i * 0.017)
     add(g)
   }
 
-  add(barrelZ(0.006, 0.006, 0.1, 6, metal, -0.055, tubeY))
-  add(barrelZ(0.006, 0.006, 0.1, 6, metal, -0.055, barrelY))
+  add(barrelZ(0.005, 0.005, 0.09, 6, metal, -0.05, tubeY))
+  add(barrelZ(0.005, 0.005, 0.09, 6, metal, -0.05, barrelY))
 
-  // ── Side saddle (−X) ─────────────────────────────────────────────────────
-  add(boxW(0.014, 0.072, 0.12, metal, -0.054, 0.056, 0))
+  // ── Side saddle (−X) ───────────────────────────────────────────────────────
+  add(boxW(0.012, 0.068, 0.11, metal, -0.052, 0.058, 0))
   const hullColors = [0xc84838, 0xc84838, 0xd8d4cc, 0xd8d4cc]
   for (let i = 0; i < 4; i++) {
-    const y = 0.03 + i * 0.017
-    const z = 0.015 - i * 0.025
-    const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.044, 12), weaponPolyMat(hullColors[i]))
+    const y = 0.032 + i * 0.016
+    const z = 0.012 - i * 0.022
+    const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.04, 10), weaponPolyMat(hullColors[i]))
     hull.rotation.z = Math.PI / 2
-    hull.position.set(-0.066, y, z)
+    hull.position.set(-0.062, y, z)
     add(hull)
-    const brass = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.01, 10), weaponBrassMat())
+    const brass = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.009, 8), weaponBrassMat())
     brass.rotation.z = Math.PI / 2
-    brass.position.set(-0.07, y, z + 0.024)
+    brass.position.set(-0.065, y, z + 0.022)
     add(brass)
   }
 }

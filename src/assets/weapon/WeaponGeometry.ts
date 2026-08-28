@@ -50,6 +50,26 @@ export function boxW(
   return m
 }
 
+/**
+ * Extrude a YZ side silhouette along X (stock width).
+ * Profile points are gun [z, y] — comb can rise above the grip line.
+ */
+export function extrudeYZ(
+  profile: ReadonlyArray<readonly [number, number]>,
+  width: number,
+  mat: PartMat,
+): THREE.Mesh {
+  const shape = new THREE.Shape()
+  shape.moveTo(profile[0][0], profile[0][1])
+  for (let i = 1; i < profile.length; i++) shape.lineTo(profile[i][0], profile[i][1])
+  shape.closePath()
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: width, bevelEnabled: false, curveSegments: 10 })
+  const mesh = new THREE.Mesh(geo, mat)
+  mesh.rotation.y = Math.PI / 2
+  mesh.position.x = -width / 2
+  return mesh
+}
+
 /** Trigger guard arc in YZ plane. */
 export function triggerGuard(mat: PartMat, z: number, scale = 1): THREE.Mesh {
   const shape = new THREE.Shape()
