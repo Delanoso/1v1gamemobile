@@ -14,7 +14,7 @@ export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate' | 'p
 
 const ASSET_LABELS: Record<LabAsset, string> = {
   container: 'Shipping Container',
-  floor: 'Asphalt Floor',
+  floor: 'Concrete Floor',
   fence: 'Chain-link Fence',
   barrel: 'Barrel',
   crate: 'Crate',
@@ -283,8 +283,8 @@ export class LabApp {
       this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
       this.statusEl.textContent =
         result.source === 'glb'
-          ? 'Using imported floor GLB — check wetness, cracks, and line wear.'
-          : 'Procedural v2 — 2K asphalt, smooth aggregate, mipmapped.'
+          ? 'Using imported floor GLB — check joints, stains, and wear.'
+          : 'Procedural v3 — poured concrete slab with control joints and yard wear.'
       return
     }
 

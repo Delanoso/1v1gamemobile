@@ -4,6 +4,9 @@ const COLOR_RES = 2048
 const ROUGH_RES = 1024
 const NORMAL_RES = 512
 
+/** One 8×8 m slab — control joints every ~4 m in UV space. */
+const JOINTS_PER_TILE = 2
+
 type FloorTexVariant = 'lab' | 'map'
 
 function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
@@ -13,7 +16,6 @@ function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContex
   return [c, c.getContext('2d')!]
 }
 
-/** Smooth value noise — avoids blocky 1px fillRect aggregate. */
 function fillValueNoise(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -46,14 +48,14 @@ function fillValueNoise(
       const i = (y * w + x) * 4
       img.data[i] = v
       img.data[i + 1] = v
-      img.data[i + 2] = v + 2
+      img.data[i + 2] = v + 1
       img.data[i + 3] = 255
     }
   }
   ctx.putImageData(img, 0, 0)
 }
 
-function configureAsphaltTexture(tex: THREE.CanvasTexture, repeatX: number, repeatY: number): void {
+function configureColorTexture(tex: THREE.CanvasTexture, repeatX: number, repeatY: number): void {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
   tex.repeat.set(repeatX, repeatY)
   tex.colorSpace = THREE.SRGBColorSpace
@@ -74,95 +76,146 @@ function configureDataTexture(tex: THREE.CanvasTexture, repeatX: number, repeatY
   tex.needsUpdate = true
 }
 
-/** Dark industrial asphalt with aggregate, stains, and worn lane markings. */
-export function buildAsphaltColorMap(options?: { laneMarkings?: boolean; surfaceBands?: boolean }): THREE.CanvasTexture {
+function drawControlJoints(ctx: CanvasRenderingContext2D, S: number): void {
+  const pitch = S / JOINTS_PER_TILE
+  const groove = Math.max(3, Math.floor(S / 512))
+
+  for (let i = 1; i < JOINTS_PER_TILE; i++) {
+    const pos = Math.round(i * pitch)
+    // Vertical joint
+    ctx.fillStyle = 'rgba(72,74,78,0.55)'
+    ctx.fillRect(pos - groove, 0, groove * 2, S)
+    ctx.fillStyle = 'rgba(180,182,186,0.35)'
+    ctx.fillRect(pos + groove, 0, groove, S)
+    // Horizontal joint
+    ctx.fillStyle = 'rgba(72,74,78,0.55)'
+    ctx.fillRect(0, pos - groove, S, groove * 2)
+    ctx.fillStyle = 'rgba(180,182,186,0.35)'
+    ctx.fillRect(0, pos + groove, S, groove)
+  }
+}
+
+function drawTrowelMarks(ctx: CanvasRenderingContext2D, S: number): void {
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'
+  ctx.lineWidth = Math.max(2, S / 400)
+  for (let y = 0; y < S; y += Math.floor(S / 28)) {
+    ctx.beginPath()
+    ctx.moveTo(0, y + Math.sin(y * 0.02) * 4)
+    for (let x = 0; x < S; x += 40) {
+      ctx.lineTo(x, y + Math.sin((x + y) * 0.015) * 3)
+    }
+    ctx.stroke()
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,0.025)'
+  for (let y = Math.floor(S / 56); y < S; y += Math.floor(S / 28)) {
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(S, y + 2)
+    ctx.stroke()
+  }
+}
+
+/** Weathered industrial concrete — storage yard slab with joints and wear. */
+export function buildConcreteColorMap(): THREE.CanvasTexture {
   const S = COLOR_RES
   const [c, ctx] = canvas(S, S)
-  ctx.fillStyle = '#2b2e32'
+
+  // Warm gray poured concrete base
+  ctx.fillStyle = '#a8aaac'
   ctx.fillRect(0, 0, S, S)
 
-  // Large-scale tone variation
-  fillValueNoise(ctx, S, S, 96, 42, 42)
+  // Per-panel tone shift (each joint cell slightly different cure color)
+  const pitch = S / JOINTS_PER_TILE
+  for (let row = 0; row < JOINTS_PER_TILE; row++) {
+    for (let col = 0; col < JOINTS_PER_TILE; col++) {
+      const shade = 168 + Math.random() * 22
+      ctx.fillStyle = `rgb(${shade},${shade - 2},${shade - 6})`
+      ctx.fillRect(col * pitch + 2, row * pitch + 2, pitch - 4, pitch - 4)
+    }
+  }
 
-  // Fine aggregate (smooth noise, not square pixels)
+  fillValueNoise(ctx, S, S, 64, 28, 168)
+
+  // Fine sand / aggregate flecks
   const fine = ctx.createImageData(S, S)
   for (let y = 0; y < S; y++) {
     for (let x = 0; x < S; x++) {
-      const n = (Math.random() - 0.5) * 28
+      const speck = Math.random() < 0.08 ? (Math.random() - 0.5) * 40 : (Math.random() - 0.5) * 12
       const i = (y * S + x) * 4
-      fine.data[i] = 128 + n
-      fine.data[i + 1] = 128 + n
-      fine.data[i + 2] = 130 + n
-      fine.data[i + 3] = 38
+      fine.data[i] = 168 + speck
+      fine.data[i + 1] = 166 + speck
+      fine.data[i + 2] = 162 + speck
+      fine.data[i + 3] = 255
     }
   }
+  ctx.globalAlpha = 0.55
   ctx.putImageData(fine, 0, 0)
+  ctx.globalAlpha = 1
 
-  // Subtle roller compaction bands (lab only)
-  if (options?.surfaceBands !== false) {
-    for (let y = 0; y < S; y += 96) {
-      ctx.fillStyle = 'rgba(255,255,255,0.012)'
-      ctx.fillRect(0, y, S, 18)
-      ctx.fillStyle = 'rgba(0,0,0,0.018)'
-      ctx.fillRect(0, y + 20, S, 14)
-    }
+  drawTrowelMarks(ctx, S)
+  drawControlJoints(ctx, S)
+
+  // Tire scrub / forklift wear paths
+  for (let i = 0; i < 5; i++) {
+    const y = Math.random() * S
+    const h = 18 + Math.random() * 40
+    const grad = ctx.createLinearGradient(0, y, 0, y + h)
+    grad.addColorStop(0, 'rgba(90,92,96,0)')
+    grad.addColorStop(0.5, 'rgba(90,92,96,0.12)')
+    grad.addColorStop(1, 'rgba(90,92,96,0)')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, y, S, h)
   }
 
-  // Oil / diesel stains
-  for (let i = 0; i < 18; i++) {
+  // Oil / rust / water stains
+  for (let i = 0; i < 12; i++) {
     const x = Math.random() * S
     const y = Math.random() * S
-    const r = 40 + Math.random() * 140
+    const r = 30 + Math.random() * 110
     const grad = ctx.createRadialGradient(x, y, 0, x, y, r)
-    grad.addColorStop(0, 'rgba(8,8,10,0.5)')
-    grad.addColorStop(0.55, 'rgba(12,12,14,0.18)')
-    grad.addColorStop(1, 'rgba(12,12,14,0)')
+    grad.addColorStop(0, 'rgba(68,64,58,0.28)')
+    grad.addColorStop(0.55, 'rgba(88,86,82,0.12)')
+    grad.addColorStop(1, 'rgba(88,86,82,0)')
     ctx.fillStyle = grad
     ctx.fillRect(x - r, y - r, r * 2, r * 2)
-  }
-
-  // Worn parking line — optional; off on map slab
-  if (options?.laneMarkings !== false) {
-    ctx.fillStyle = 'rgba(210,214,220,0.5)'
-    ctx.fillRect(0, S * 0.46, S, S * 0.028)
-    ctx.fillStyle = 'rgba(0,0,0,0.1)'
-    ctx.fillRect(0, S * 0.488, S, S * 0.004)
-    ctx.fillStyle = 'rgba(255,255,255,0.07)'
-    for (let x = 0; x < S; x += Math.floor(S / 24)) {
-      ctx.fillRect(x, S * 0.462, S / 48, S * 0.024)
-    }
   }
 
   return new THREE.CanvasTexture(c)
 }
 
-export function buildAsphaltRoughnessMap(): THREE.CanvasTexture {
+export function buildConcreteRoughnessMap(): THREE.CanvasTexture {
   const S = ROUGH_RES
   const [c, ctx] = canvas(S, S)
-  fillValueNoise(ctx, S, S, 32, 90, 196)
+  fillValueNoise(ctx, S, S, 48, 50, 210)
   const speck = ctx.createImageData(S, S)
   for (let i = 0; i < speck.data.length; i += 4) {
-    const n = 196 + (Math.random() - 0.5) * 36
+    const n = 210 + (Math.random() - 0.5) * 28
     speck.data[i] = n
     speck.data[i + 1] = n
     speck.data[i + 2] = n
     speck.data[i + 3] = 255
   }
-  ctx.globalAlpha = 0.35
+  ctx.globalAlpha = 0.25
   ctx.putImageData(speck, 0, 0)
   ctx.globalAlpha = 1
   return new THREE.CanvasTexture(c)
 }
 
-export function buildAsphaltNormalMap(): THREE.CanvasTexture {
+export function buildConcreteNormalMap(): THREE.CanvasTexture {
   const S = NORMAL_RES
   const [c, ctx] = canvas(S, S)
   const img = ctx.createImageData(S, S)
+  const pitch = S / JOINTS_PER_TILE
   for (let y = 0; y < S; y++) {
     for (let x = 0; x < S; x++) {
-      const coarse = Math.sin(x * 0.08) * Math.cos(y * 0.07) * 4
-      const fine = (Math.random() - 0.5) * 6
-      const n = coarse + fine
+      const trowel = Math.sin(x * 0.12) * 1.5
+      const fine = (Math.random() - 0.5) * 3
+      let joint = 0
+      for (let i = 1; i < JOINTS_PER_TILE; i++) {
+        const pos = i * pitch
+        if (Math.abs(x - pos) < 2 || Math.abs(y - pos) < 2) joint = -8
+      }
+      const n = trowel + fine + joint
       const i = (y * S + x) * 4
       img.data[i] = 128 + n
       img.data[i + 1] = 128 + n
@@ -178,54 +231,57 @@ const cache: Partial<
   Record<FloorTexVariant, { map: THREE.CanvasTexture; rough: THREE.CanvasTexture; normal: THREE.CanvasTexture }>
 > = {}
 
-function getAsphaltSet(variant: FloorTexVariant, repeatX: number, repeatY: number) {
+function getConcreteSet(variant: FloorTexVariant, repeatX: number, repeatY: number) {
   if (!cache[variant]) {
-    const forMap = variant === 'map'
     cache[variant] = {
-      map: buildAsphaltColorMap({ laneMarkings: !forMap, surfaceBands: !forMap }),
-      rough: buildAsphaltRoughnessMap(),
-      normal: buildAsphaltNormalMap(),
+      map: buildConcreteColorMap(),
+      rough: buildConcreteRoughnessMap(),
+      normal: buildConcreteNormalMap(),
     }
   }
   const { map, rough, normal } = cache[variant]!
-  configureAsphaltTexture(map, repeatX, repeatY)
+  configureColorTexture(map, repeatX, repeatY)
   configureDataTexture(rough, repeatX, repeatY)
   configureDataTexture(normal, repeatX, repeatY)
   return { map, rough, normal }
 }
 
 /** Cached PBR maps for one floor tile (8×8 m). */
-export function asphaltMapsForTile(repeatX = 1, repeatY = 1, forMap = false): {
+export function floorMapsForTile(repeatX = 1, repeatY = 1, forMap = false): {
   map: THREE.CanvasTexture
   rough: THREE.CanvasTexture
   normal: THREE.CanvasTexture
 } {
-  return getAsphaltSet(forMap ? 'map' : 'lab', repeatX, repeatY)
+  return getConcreteSet(forMap ? 'map' : 'lab', repeatX, repeatY)
 }
 
-/** @deprecated Use asphaltMapsForTile */
-export function asphaltColorMap(options?: { laneMarkings?: boolean; surfaceBands?: boolean }): THREE.CanvasTexture {
-  const forMap = options?.laneMarkings === false && options?.surfaceBands === false
-  return asphaltMapsForTile(2, 2, forMap).map
+/** @deprecated Use floorMapsForTile */
+export function asphaltMapsForTile(repeatX = 1, repeatY = 1, forMap = false) {
+  return floorMapsForTile(repeatX, repeatY, forMap)
 }
 
-/** @deprecated Use asphaltMapsForTile */
+/** @deprecated */
+export function asphaltColorMap(): THREE.CanvasTexture {
+  return floorMapsForTile(2, 2, false).map
+}
+
+/** @deprecated */
 export function asphaltRoughnessMap(): THREE.CanvasTexture {
-  return asphaltMapsForTile(2, 2, false).rough
+  return floorMapsForTile(2, 2, false).rough
 }
 
-/** @deprecated Use asphaltMapsForTile */
+/** @deprecated */
 export function asphaltNormalMap(): THREE.CanvasTexture {
-  return asphaltMapsForTile(2, 2, false).normal
+  return floorMapsForTile(2, 2, false).normal
 }
 
 export function puddleMaterial(): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
-    color: 0x4a5868,
-    metalness: 0.65,
-    roughness: 0.12,
+    color: 0x6a7888,
+    metalness: 0.55,
+    roughness: 0.14,
     transparent: true,
-    opacity: 0.72,
+    opacity: 0.65,
     depthWrite: false,
   })
 }
@@ -233,8 +289,8 @@ export function puddleMaterial(): THREE.MeshStandardMaterial {
 export function crackDecalTexture(): THREE.CanvasTexture {
   const [c, ctx] = canvas(512, 512)
   ctx.clearRect(0, 0, 512, 512)
-  ctx.strokeStyle = 'rgba(18,20,24,0.75)'
-  ctx.lineWidth = 3
+  ctx.strokeStyle = 'rgba(58,56,52,0.65)'
+  ctx.lineWidth = 2.5
   ctx.lineCap = 'round'
   ctx.beginPath()
   ctx.moveTo(80, 360)
@@ -242,7 +298,7 @@ export function crackDecalTexture(): THREE.CanvasTexture {
   ctx.lineTo(240, 310)
   ctx.lineTo(340, 190)
   ctx.stroke()
-  ctx.lineWidth = 2
+  ctx.lineWidth = 1.5
   ctx.beginPath()
   ctx.moveTo(200, 400)
   ctx.lineTo(260, 340)

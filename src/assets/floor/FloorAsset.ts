@@ -1,13 +1,9 @@
 /**
- * Asphalt floor tile — single source of truth for container yard ground.
+ * Industrial concrete floor — storage yard slab with control joints.
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import {
-  asphaltMapsForTile,
-  crackDecalTexture,
-  puddleMaterial,
-} from './FloorTextures'
+import { crackDecalTexture, floorMapsForTile, puddleMaterial } from './FloorTextures'
 
 export const FLOOR_TILE = { width: 8, depth: 8, thickness: 0.1 } as const
 
@@ -31,27 +27,24 @@ function countTriangles(root: THREE.Object3D): number {
   return Math.floor(n)
 }
 
-function asphaltMat(repeatX = 1, repeatY = 1, forMap = false): THREE.MeshStandardMaterial {
-  const { map, rough, normal } = asphaltMapsForTile(repeatX, repeatY, forMap)
+function concreteMat(repeatX = 1, repeatY = 1, forMap = false): THREE.MeshStandardMaterial {
+  const { map, rough, normal } = floorMapsForTile(repeatX, repeatY, forMap)
   return new THREE.MeshStandardMaterial({
     map,
     roughnessMap: rough,
     normalMap: normal,
-    normalScale: new THREE.Vector2(0.22, 0.22),
-    metalness: 0.03,
-    roughness: 0.92,
+    normalScale: new THREE.Vector2(0.18, 0.18),
+    metalness: 0.02,
+    roughness: 0.96,
+    color: 0xffffff,
   })
 }
 
-function lineMat(): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color: 0xd8dce0, roughness: 0.95, metalness: 0 })
-}
-
-/** Procedural asphalt floor section for Asset Lab review. */
+/** Procedural concrete slab for Asset Lab review. */
 export function buildProceduralFloor(): FloorBuildResult {
   const group = new THREE.Group()
   const { width: W, depth: D, thickness: T } = FLOOR_TILE
-  const mat = asphaltMat()
+  const mat = concreteMat()
   const puddle = puddleMaterial()
 
   const slab = new THREE.Mesh(new THREE.BoxGeometry(W, T, D), mat)
@@ -60,19 +53,7 @@ export function buildProceduralFloor(): FloorBuildResult {
   slab.castShadow = true
   group.add(slab)
 
-  // Cross parking lines (Shipment yard style)
-  const addLine = (w: number, d: number, x: number, z: number) => {
-    const line = new THREE.Mesh(new THREE.PlaneGeometry(w, d), lineMat())
-    line.rotation.x = -Math.PI / 2
-    line.position.set(x, T + 0.004, z)
-    group.add(line)
-  }
-  addLine(W * 0.55, 0.14, 0, 0)
-  addLine(0.14, D * 0.55, 0, 0)
-  addLine(3.8, 0.12, -2.2, D * 0.38)
-  addLine(3.8, 0.12, 2.2, -D * 0.38)
-
-  // Rain puddles
+  // Rain puddles in low spots
   const puddleSpots: [number, number, number][] = [
     [-1.8, 1.4, 1.3],
     [2.1, -1.6, 1.0],
@@ -87,7 +68,7 @@ export function buildProceduralFloor(): FloorBuildResult {
     group.add(pool)
   }
 
-  // Crack decal overlays
+  // Hairline cracks
   const crackMat = new THREE.MeshStandardMaterial({
     map: crackDecalTexture(),
     transparent: true,
@@ -106,10 +87,10 @@ export function buildProceduralFloor(): FloorBuildResult {
     group.add(crack)
   }
 
-  // Curb lip along one edge (port yard detail)
+  // Yard curb / dock lip
   const curb = new THREE.Mesh(
     new THREE.BoxGeometry(W, 0.14, 0.22),
-    new THREE.MeshStandardMaterial({ color: 0x5a6068, roughness: 0.88, metalness: 0.05 }),
+    new THREE.MeshStandardMaterial({ color: 0x7a7e84, roughness: 0.9, metalness: 0.04 }),
   )
   curb.position.set(0, 0.07, -D / 2 + 0.11)
   curb.castShadow = true
@@ -119,11 +100,11 @@ export function buildProceduralFloor(): FloorBuildResult {
   return { group, source: 'procedural', triangleCount: countTriangles(group) }
 }
 
-/** Single ground slab for the playable map — avoids tiled z-fighting and GPU churn. */
+/** Single ground slab for the playable map. */
 export function buildMapGround(width: number, depth: number): THREE.Group {
   const group = new THREE.Group()
   const T = 0.1
-  const mat = asphaltMat(width / FLOOR_TILE.width, depth / FLOOR_TILE.depth, true)
+  const mat = concreteMat(width / FLOOR_TILE.width, depth / FLOOR_TILE.depth, true)
   const puddle = puddleMaterial()
 
   const slab = new THREE.Mesh(new THREE.BoxGeometry(width, T, depth), mat)
