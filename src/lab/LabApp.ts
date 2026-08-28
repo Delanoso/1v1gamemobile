@@ -392,7 +392,7 @@ export class LabApp {
       this.statusEl.textContent =
         result.source === 'glb'
           ? `Using imported ${variantNames[this.weaponVariant]} GLB.`
-          : `Procedural v2 — ${variantLabels[this.weaponVariant]}.`
+          : `Procedural v3 — ${variantLabels[this.weaponVariant]}. Drop GLB for reference fidelity.`
     }
   }
 

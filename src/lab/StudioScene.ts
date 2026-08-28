@@ -77,6 +77,7 @@ export class StudioScene {
       this.applyGroundDefaults()
     } else if (mode === 'weapon') {
       object.position.y = 0.55
+      object.rotation.y = Math.PI
       this.applyWeaponDefaults()
     } else {
       object.position.y = propEyeLevel(object)

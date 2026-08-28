@@ -1,10 +1,30 @@
 /**
  * FPS weapon meshes — lab hero + in-game viewmodel source of truth.
+ * Coordinates: +Z rear (stock), -Z front (muzzle), +Y up.
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import {
+  barrelZ,
+  boxW,
+  buildPsoScope,
+  flashHider,
+  handguardVents,
+  pumpGrooves,
+  revolveZ,
+  ribbedSuppressor,
+  ringZ,
+  triggerGuard,
+  tubePath,
+  ventedHeatShield,
+  waffleMag,
+} from './WeaponGeometry'
+import {
   weaponBluedMat,
+  weaponBrassMat,
+  weaponGlassMat,
+  weaponHeatShieldMat,
+  weaponLeatherMat,
   weaponMetalMat,
   weaponPolyMat,
   weaponRubberMat,
@@ -40,326 +60,206 @@ function countTriangles(root: THREE.Object3D): number {
   return Math.floor(n)
 }
 
-type AddMesh = (mesh: THREE.Mesh) => void
+type Add = (mesh: THREE.Mesh) => void
 
-function buildM4A1(add: AddMesh): void {
+function buildM4A1(add: Add): void {
   const metal = weaponMetalMat()
   const dark = weaponBluedMat()
   const poly = weaponPolyMat()
 
-  add(new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 0.34), dark))
-  add(new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.085, 0.22), metal))
-  add(new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.07, 0.28), poly))
+  add(boxW(0.07, 0.055, 0.2, dark, 0, 0.04, -0.02))
+  add(boxW(0.065, 0.05, 0.18, metal, 0, 0.068, -0.04))
+  add(boxW(0.06, 0.035, 0.16, dark, 0, 0.028, -0.03))
 
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.38, 10), metal)
-  barrel.rotation.x = Math.PI / 2
-  barrel.position.z = -0.36
-  add(barrel)
+  add(revolveZ(
+    [
+      [-0.12, 0.028],
+      [-0.28, 0.032],
+      [-0.34, 0.028],
+    ],
+    14,
+    dark,
+  ))
 
-  const fh = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.016, 0.05, 8), dark)
-  fh.rotation.x = Math.PI / 2
-  fh.position.z = -0.56
-  add(fh)
+  add(barrelZ(0.011, 0.011, 0.38, 12, metal, -0.36, 0.055))
+  add(barrelZ(0.016, 0.014, 0.05, 10, dark, -0.56, 0.055))
+  add(ringZ(0.02, 0.004, metal, -0.18, 0.055))
 
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.11, 0.065), poly)
-  grip.position.set(0, -0.1, 0.04)
-  grip.rotation.x = 0.38
-  add(grip)
+  add(boxW(0.055, 0.065, 0.26, poly, 0, 0.02, -0.16))
+  for (let i = 0; i < 8; i++) {
+    add(boxW(0.032, 0.01, 0.024, metal, 0, 0.072, -0.06 - i * 0.03))
+  }
 
-  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.13, 0.075), dark)
-  mag.position.set(0, -0.12, -0.02)
-  add(mag)
+  add(boxW(0.04, 0.05, 0.12, metal, 0, 0.095, -0.04))
+  add(boxW(0.004, 0.022, 0.004, metal, 0, 0.085, -0.48))
+  add(boxW(0.018, 0.028, 0.012, metal, 0, 0.1, -0.02))
 
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, 0.2), poly)
-  stock.position.set(0, -0.01, 0.24)
-  add(stock)
+  add(boxW(0.042, 0.11, 0.065, poly, 0, -0.06, 0.06))
+  add(boxW(0.04, 0.13, 0.075, dark, 0, -0.12, -0.02))
+  add(boxW(0.05, 0.07, 0.2, poly, 0, 0.02, 0.24))
+  add(barrelZ(0.013, 0.013, 0.16, 8, metal, 0.36, 0.04))
 
-  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.14, 8), metal)
-  tube.rotation.x = Math.PI / 2
-  tube.position.set(0, 0.02, 0.34)
-  add(tube)
-
-  const carry = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.12), metal)
-  carry.position.set(0, 0.09, -0.04)
-  add(carry)
-
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.012, 0.24), metal)
-  rail.position.set(0, 0.06, -0.06)
-  add(rail)
+  add(triggerGuard(dark, 0.04))
+  add(boxW(0.006, 0.022, 0.012, metal, 0, -0.05, 0.05))
+  add(boxW(0.012, 0.008, 0.04, metal, 0.04, 0.05, -0.02))
+  add(boxW(0.008, 0.012, 0.03, metal, 0, 0.05, 0.1))
 }
 
-function buildShotgun(add: AddMesh): void {
+function buildShotgun(add: Add): void {
   const metal = weaponMetalMat(1)
   const dark = weaponBluedMat()
   const wood = weaponWoodMat(2)
   const woodDark = weaponWoodMat(3)
+  const shield = weaponHeatShieldMat()
 
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.11, 0.42), wood)
-  stock.position.set(0, 0.02, 0.38)
-  add(stock)
+  // Receiver z: -0.11 … +0.11
+  add(boxW(0.09, 0.1, 0.22, dark, 0, 0.05, 0))
+  add(boxW(0.008, 0.038, 0.07, weaponPolyMat(0x0a0c10), 0.046, 0.065, 0.02))
+  add(boxW(0.006, 0.028, 0.04, metal, 0.042, 0.062, 0.02))
+  add(boxW(0.05, 0.008, 0.08, weaponPolyMat(0x0a0c10), 0, 0.018, 0))
+  add(boxW(0.03, 0.008, 0.04, weaponPolyMat(0x1a1c20), 0, 0.1, 0.06))
+  add(boxW(0.02, 0.018, 0.012, metal, 0, 0.1, 0.02))
+  add(triggerGuard(dark, 0.02, 1.15))
+  add(boxW(0.006, 0.024, 0.01, metal, 0, -0.02, 0.02))
 
-  const riser = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.035, 0.14), dark)
-  riser.position.set(0, 0.1, 0.32)
-  add(riser)
-  for (const sx of [-0.028, 0.028]) {
-    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.02, 6), metal)
-    knob.position.set(sx, 0.12, 0.32)
+  // Stock z: +0.11 … +0.58
+  add(boxW(0.082, 0.11, 0.14, wood, 0, 0.05, 0.48))
+  add(boxW(0.078, 0.045, 0.18, wood, 0, 0.105, 0.34))
+  add(boxW(0.08, 0.085, 0.1, wood, 0, 0.045, 0.2))
+  add(boxW(0.085, 0.12, 0.04, weaponRubberMat(), 0, 0.05, 0.56))
+  add(boxW(0.065, 0.035, 0.14, dark, 0, 0.125, 0.3))
+  for (const x of [-0.024, 0.024]) {
+    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.018, 8), metal)
+    knob.position.set(x, 0.14, 0.3)
     add(knob)
   }
+  add(boxW(0.082, 0.04, 0.1, weaponTapeMat(), 0, 0.04, 0.46))
+  add(boxW(0.05, 0.01, 0.07, weaponTapeMat(0x2a68c8), 0, 0.1, 0.18))
 
-  const tape = new THREE.Mesh(new THREE.BoxGeometry(0.082, 0.04, 0.1), weaponTapeMat())
-  tape.position.set(0, 0.01, 0.48)
-  add(tape)
+  // Barrels z: -0.7 … -0.06
+  add(barrelZ(0.017, 0.017, 0.64, 14, metal, -0.38, 0.048))
+  add(barrelZ(0.013, 0.013, 0.6, 12, dark, -0.38, 0.012))
+  for (const z of [-0.06, -0.3, -0.56]) add(ringZ(0.022, 0.004, metal, z, 0.03))
 
-  const blueTape = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.012, 0.06), weaponTapeMat(0x3a68b8))
-  blueTape.position.set(0, 0.08, 0.22)
-  add(blueTape)
+  // Pump wraps tubes z: -0.28 … -0.08
+  add(boxW(0.09, 0.075, 0.2, wood, 0, 0.018, -0.18))
+  pumpGrooves(add, 8, -0.24, 0.022, woodDark, 0.018)
+  add(barrelZ(0.008, 0.008, 0.1, 6, metal, -0.06, 0.012))
+  add(barrelZ(0.008, 0.008, 0.1, 6, metal, -0.06, 0.048))
 
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.12, 0.04), weaponRubberMat())
-  pad.position.set(0, 0.02, 0.6)
-  add(pad)
+  add(ventedHeatShield(0.48, 0.038, shield, -0.34, 0.062))
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.006, 8, 8), metal).translateY(0.072).translateZ(-0.68) as THREE.Mesh)
+  add(barrelZ(0.018, 0.016, 0.03, 10, metal, -0.66, 0.012))
 
-  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.1, 0.22), dark)
-  receiver.position.set(0, 0.02, 0.08)
-  add(receiver)
-
-  const port = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.06), metal)
-  port.position.set(0.048, 0.04, 0.1)
-  add(port)
-
-  const pump = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.09, 0.2), wood)
-  pump.position.set(0, -0.02, -0.12)
-  add(pump)
-
-  for (let i = 0; i < 6; i++) {
-    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.086, 0.008, 0.024), woodDark)
-    groove.position.set(0, -0.02, -0.2 + i * 0.028)
-    add(groove)
-  }
-
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.62, 10), metal)
-  barrel.rotation.x = Math.PI / 2
-  barrel.position.set(0, 0.04, -0.38)
-  add(barrel)
-
-  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.58, 8), dark)
-  tube.rotation.x = Math.PI / 2
-  tube.position.set(0, -0.01, -0.38)
-  add(tube)
-
-  const shield = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.055, 0.48), metal)
-  shield.position.set(0, 0.055, -0.34)
-  add(shield)
-  for (let row = 0; row < 2; row++) {
-    for (let i = 0; i < 7; i++) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.018, 0.038), dark)
-      vent.position.set(row === 0 ? -0.014 : 0.014, 0.082, -0.16 - i * 0.05)
-      add(vent)
-    }
-  }
-
-  const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, 0.14), metal)
-  saddle.position.set(0.055, 0.04, 0.02)
-  add(saddle)
+  add(boxW(0.016, 0.075, 0.13, metal, 0.054, 0.055, 0))
   const shellColors = [0xc84838, 0xc84838, 0xd8d0c8, 0xd8d0c8]
   for (let i = 0; i < 4; i++) {
-    const shell = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.012, 0.012, 0.05, 6),
-      weaponPolyMat(shellColors[i]),
-    )
-    shell.rotation.x = Math.PI / 2
-    shell.position.set(0.07, 0.02 + i * 0.02, 0.02 - i * 0.028)
-    add(shell)
-    const brass = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.012, 6), weaponMetalMat(2))
-    brass.rotation.x = Math.PI / 2
-    brass.position.set(0.07, 0.02 + i * 0.02, 0.048 - i * 0.028)
-    add(brass)
+    add(boxW(0.018, 0.022, 0.048, weaponPolyMat(shellColors[i]), 0.064, 0.03 + i * 0.02, 0.02 - i * 0.026))
+    add(boxW(0.02, 0.024, 0.012, weaponBrassMat(), 0.064, 0.03 + i * 0.02, 0.054 - i * 0.026))
   }
-
-  const bead = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.02, 6), metal)
-  bead.rotation.x = Math.PI / 2
-  bead.position.set(0, 0.06, -0.68)
-  add(bead)
 }
 
-function buildSvd(add: AddMesh): void {
+function buildSvd(add: Add): void {
   const metal = weaponMetalMat()
   const dark = weaponBluedMat()
   const wood = weaponWoodMat(4)
+  const poly = weaponPolyMat()
+  const leather = weaponLeatherMat()
 
-  const stockBase = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, 0.38), wood)
-  stockBase.position.set(0, 0.02, 0.36)
-  add(stockBase)
+  // Thumbhole stock — layered wood
+  add(boxW(0.1, 0.14, 0.34, wood, 0, 0.05, 0.4))
+  add(boxW(0.09, 0.06, 0.14, wood, 0, 0.02, 0.26))
+  add(boxW(0.08, 0.1, 0.12, wood, 0, -0.04, 0.24))
+  add(boxW(0.088, 0.04, 0.16, leather, 0, 0.12, 0.34))
+  add(boxW(0.1, 0.12, 0.02, weaponRubberMat(0x2a2420), 0, 0.05, 0.56))
 
-  const thumbhole = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.14), wood)
-  thumbhole.position.set(0, -0.04, 0.28)
-  add(thumbhole)
+  add(boxW(0.08, 0.1, 0.28, dark, 0, 0.05, 0.06))
+  add(boxW(0.076, 0.012, 0.18, metal, 0, 0.1, -0.02))
+  add(boxW(0.085, 0.09, 0.34, poly, 0, 0.03, -0.12))
 
-  const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.16), weaponPolyMat(0x4a3828))
-  cheek.position.set(0, 0.1, 0.34)
-  add(cheek)
-
-  const buttplate = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.02), weaponRubberMat(0x2a2420))
-  buttplate.position.set(0, 0.02, 0.56)
-  add(buttplate)
-
-  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.28), dark)
-  receiver.position.set(0, 0.02, 0.1)
-  add(receiver)
-
-  const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.09, 0.34), weaponPolyMat())
-  handguard.position.set(0, 0.01, -0.12)
-  add(handguard)
-  for (let i = 0; i < 3; i++) {
-    for (const sx of [-0.044, 0.044]) {
-      const slot = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.05, 0.07), weaponPolyMat(0x1a1e22))
-      slot.position.set(sx, 0.01, -0.04 - i * 0.1)
-      add(slot)
-    }
+  handguardVents(add, 3, -0.04, 0.1, weaponPolyMat(0x0e1014))
+  for (let i = 0; i < 5; i++) {
+    add(boxW(0.07, 0.01, 0.018, weaponPolyMat(0x222830), 0, -0.02, -0.24 + i * 0.06))
   }
   for (let i = 0; i < 4; i++) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.012, 0.02), weaponPolyMat(0x222830))
-    rib.position.set(0, -0.03, -0.22 + i * 0.08)
-    add(rib)
+    add(boxW(0.006, 0.04, 0.02, weaponPolyMat(0x1a1e22), 0, -0.01, -0.22 + i * 0.07))
   }
 
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.72, 10), metal)
-  barrel.rotation.x = Math.PI / 2
-  barrel.position.set(0, 0.045, -0.48)
-  add(barrel)
+  add(barrelZ(0.01, 0.01, 0.7, 12, metal, -0.48, 0.052))
+  add(boxW(0.03, 0.025, 0.04, metal, 0, 0.06, -0.28))
+  add(boxW(0.012, 0.028, 0.008, metal, 0, 0.075, -0.72))
+  add(boxW(0.018, 0.012, 0.012, metal, 0, 0.083, -0.72))
+  flashHider(add, dark, -0.86, 0.052)
 
-  const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.014, 0.08, 8), dark)
-  muzzle.rotation.x = Math.PI / 2
-  muzzle.position.set(0, 0.045, -0.86)
-  add(muzzle)
-  for (let i = 0; i < 5; i++) {
-    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.02, 0.012), metal)
-    slot.position.set(0, 0.045, -0.82 - i * 0.012)
-    add(slot)
-  }
-
-  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.1, 0.12), metal)
-  mag.position.set(0, -0.1, 0.04)
-  mag.rotation.x = 0.2
-  add(mag)
+  add(boxW(0.045, 0.1, 0.12, metal, 0, -0.08, 0.05))
   for (let i = 0; i < 3; i++) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.008, 0.02), weaponMetalMat(1))
-    rib.position.set(0, -0.08 + i * 0.028, 0.05)
-    rib.rotation.x = 0.2
-    add(rib)
+    add(boxW(0.046, 0.008, 0.02, weaponMetalMat(1), 0, -0.06 + i * 0.028, 0.06))
   }
 
-  const mount = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, 0.12), metal)
-  mount.position.set(0.06, 0.08, 0.02)
-  add(mount)
+  add(boxW(0.03, 0.006, 0.05, metal, -0.042, 0.06, 0.06))
+  add(boxW(0.008, 0.02, 0.06, metal, 0.042, 0.085, -0.04))
+  add(triggerGuard(dark, 0.05, 1.1))
+  add(boxW(0.006, 0.022, 0.01, metal, 0, -0.04, 0.05))
 
-  const scopeBody = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.024, 0.28, 10), dark)
-  scopeBody.rotation.z = Math.PI / 2
-  scopeBody.position.set(0.2, 0.1, 0.02)
-  add(scopeBody)
-
-  const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.022, 0.06, 10), dark)
-  bell.rotation.z = Math.PI / 2
-  bell.position.set(0.34, 0.1, 0.02)
-  add(bell)
-
-  const eyecup = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.04, 10), weaponRubberMat())
-  eyecup.rotation.z = Math.PI / 2
-  eyecup.position.set(0.08, 0.1, 0.02)
-  add(eyecup)
-
-  for (const sx of [0.14, 0.26]) {
-    const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 8), metal)
-    turret.position.set(sx, 0.12, 0.02)
-    add(turret)
-  }
+  buildPsoScope(add, { body: dark, metal, rubber: weaponRubberMat(), glass: weaponGlassMat() })
 }
 
-function buildAk74(add: AddMesh): void {
+function buildAk74(add: Add): void {
   const dark = weaponBluedMat()
   const metal = weaponMetalMat()
   const poly = weaponPolyMat()
-  const suppressorMat = weaponSuppressorMat(true)
 
-  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.26), dark)
-  receiver.position.set(0, 0.02, 0.04)
-  add(receiver)
+  add(boxW(0.08, 0.1, 0.26, dark, 0, 0.05, 0))
+  add(boxW(0.008, 0.032, 0.06, weaponPolyMat(0x0a0c10), 0.04, 0.065, 0))
+  add(boxW(0.01, 0.018, 0.05, metal, 0.04, 0.085, -0.02))
 
-  const handguard = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.085, 0.22), poly)
-  handguard.position.set(0, 0.01, -0.14)
-  add(handguard)
+  add(boxW(0.085, 0.085, 0.22, poly, 0, 0.03, -0.14))
+  handguardVents(add, 2, -0.1, 0.08, weaponPolyMat(0x0e1014))
+  add(boxW(0.035, 0.028, 0.048, poly, 0.04, 0.07, -0.08))
 
-  const vg = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.024, 0.1, 8), poly)
-  vg.position.set(0, -0.1, -0.1)
-  add(vg)
-
-  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, 0.1), metal)
-  mag.position.set(0, -0.1, 0.02)
-  mag.rotation.x = 0.15
-  add(mag)
+  add(boxW(0.044, 0.1, 0.1, poly, 0, -0.08, -0.1))
+  add(boxW(0.05, 0.12, 0.1, metal, 0, -0.1, 0.02))
   for (let i = 0; i < 3; i++) {
-    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.051, 0.006, 0.02), weaponMetalMat(1))
-    rib.position.set(0, -0.06 + i * 0.03, 0.03)
-    rib.rotation.x = 0.15
-    add(rib)
+    add(boxW(0.051, 0.006, 0.02, weaponMetalMat(1), 0, -0.06 + i * 0.03, 0.03))
   }
-  const cross = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.006), dark)
-  cross.position.set(0.026, -0.08, 0.04)
-  cross.rotation.x = 0.15
-  add(cross)
+  waffleMag(add, weaponPolyMat(0x1e2428), 1, 0.03, -0.1)
+  waffleMag(add, weaponPolyMat(0x1e2428), -1, 0.03, -0.1)
 
-  const suppressor = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.42, 12), suppressorMat)
-  suppressor.rotation.x = Math.PI / 2
-  suppressor.position.set(0, 0.04, -0.42)
-  add(suppressor)
-  for (let i = 0; i < 12; i++) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.039, 0.0025, 4, 12), dark)
-    ring.rotation.x = Math.PI / 2
-    ring.position.set(0, 0.04, -0.22 - i * 0.032)
-    add(ring)
+  ribbedSuppressor(
+    add,
+    { body: weaponSuppressorMat(), rib: dark, heat: weaponSuppressorMat(true) },
+    -0.42,
+    0.048,
+    0.44,
+    0.038,
+    18,
+  )
+  add(ringZ(0.042, 0.006, metal, -0.18, 0.048))
+
+  add(boxW(0.042, 0.11, 0.065, poly, 0, -0.06, 0.08))
+  add(triggerGuard(dark, 0.04, 1.05))
+  add(boxW(0.006, 0.02, 0.01, metal, 0, -0.04, 0.05))
+
+  // Skeleton stock — tubes bolted to receiver at z=0.06
+  add(tubePath([new THREE.Vector3(0, 0.1, 0.11), new THREE.Vector3(0, 0.1, 0.22), new THREE.Vector3(0, 0.08, 0.42)], 0.012, metal))
+  add(tubePath([new THREE.Vector3(0, 0.04, 0.11), new THREE.Vector3(0, 0.03, 0.22), new THREE.Vector3(0, 0.02, 0.42)], 0.01, metal))
+  for (const z of [0.26, 0.34]) {
+    add(tubePath([new THREE.Vector3(0, 0.03, z), new THREE.Vector3(0, 0.1, z)], 0.008, metal))
   }
+  add(boxW(0.048, 0.05, 0.1, poly, 0, 0.12, 0.3))
+  add(boxW(0.058, 0.1, 0.04, weaponRubberMat(), 0, 0.05, 0.42))
 
-  const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.038, 0.06, 12), weaponSuppressorMat(true))
-  tip.rotation.x = Math.PI / 2
-  tip.position.set(0, 0.04, -0.64)
-  add(tip)
-
-  const stockTop = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 0.18), metal)
-  stockTop.position.set(0, 0.08, 0.3)
-  add(stockTop)
-  const stockBot = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.2), metal)
-  stockBot.position.set(0, 0.02, 0.3)
-  add(stockBot)
-  for (const sz of [0.22, 0.34]) {
-    const strut = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.06, 0.02), metal)
-    strut.position.set(0, 0.05, sz)
-    add(strut)
-  }
-
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.04), weaponRubberMat())
-  pad.position.set(0, 0.02, 0.42)
-  add(pad)
-
-  const riser = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.1), poly)
-  riser.position.set(0, 0.1, 0.3)
-  add(riser)
-
-  const mount = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.04, 0.08), metal)
-  mount.position.set(0.05, 0.12, 0.06)
-  add(mount)
-
-  const optic = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.07), metal)
-  optic.position.set(0.05, 0.14, 0.06)
-  add(optic)
-
-  const laser = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.03, 0.05), poly)
-  laser.position.set(0.04, 0.06, -0.08)
-  add(laser)
+  add(boxW(0.02, 0.04, 0.08, metal, 0.05, 0.13, 0.06))
+  add(boxW(0.04, 0.03, 0.07, metal, 0.05, 0.15, 0.06))
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.008, 8), weaponGlassMat())
+  lens.position.set(0.06, 0.07, -0.106)
+  lens.rotation.y = Math.PI / 2
+  add(lens)
 }
 
 export function buildProceduralWeapon(variant: WeaponVariant = 'm4a1'): WeaponBuildResult {
   const group = new THREE.Group()
-  const add: AddMesh = (mesh) => {
+  const add: Add = (mesh) => {
     mesh.castShadow = true
     mesh.receiveShadow = true
     group.add(mesh)
@@ -379,15 +279,12 @@ export function buildProceduralWeapon(variant: WeaponVariant = 'm4a1'): WeaponBu
       buildM4A1(add)
   }
 
-  group.rotation.y = Math.PI
   const box = new THREE.Box3().setFromObject(group)
-  const center = box.getCenter(new THREE.Vector3())
-  group.position.set(-center.x, -box.min.y, -center.z)
+  group.position.set(-box.getCenter(new THREE.Vector3()).x, -box.min.y, -box.getCenter(new THREE.Vector3()).z)
 
   return { group, source: 'procedural', triangleCount: countTriangles(group) }
 }
 
-/** Clone for FPS viewmodel — scaled and aimed down camera -Z. */
 export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Group {
   const { group } = buildProceduralWeapon(variant)
   const vm = group.clone(true)
@@ -417,7 +314,6 @@ export async function buildWeapon(variant: WeaponVariant = 'm4a1'): Promise<Weap
     model.position.y -= box.min.y
     const group = new THREE.Group()
     group.add(model)
-    group.rotation.y = Math.PI
     return { group, source: 'glb', triangleCount: countTriangles(group) }
   } catch {
     return buildProceduralWeapon(variant)
