@@ -118,6 +118,21 @@ body,
   min-width: 0;
 }
 
+.lab-colors-scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lab-colors-scroll button {
+  flex: 0 0 auto;
+  min-width: 72px;
+  padding: 6px 8px;
+}
+
+.lab-colors .swatch-weapon-cod { background: #2a3238; color: #e8ecf0; }
+
 .lab-colors .swatch-metal-dark { background: #3a4048; color: #e8ecf0; }
 .lab-colors .swatch-metal-green { background: #5a9a20; color: #fff; }
 .lab-colors .swatch-metal-yellow { background: #c8a820; color: #1a1c20; }
