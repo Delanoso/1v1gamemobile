@@ -46,11 +46,32 @@ function countTriangles(root: THREE.Object3D): number {
   return Math.floor(n)
 }
 
+function layWeaponFlat(group: THREE.Group): void {
+  const box = new THREE.Box3().setFromObject(group)
+  const size = box.getSize(new THREE.Vector3())
+
+  const ranked = [
+    { axis: 'x' as const, len: size.x },
+    { axis: 'y' as const, len: size.y },
+    { axis: 'z' as const, len: size.z },
+  ].sort((a, b) => b.len - a.len)
+
+  const long = ranked[0].axis
+  if (long === 'y') {
+    // Barrel points up in source file — lay length along +X.
+    group.rotation.z = Math.PI / 2
+  } else if (long === 'z') {
+    // Barrel along Z — pitch flat onto the turntable.
+    group.rotation.x = -Math.PI / 2
+  }
+}
+
 function normalizeWeaponGroup(group: THREE.Group): THREE.Group {
   const box = new THREE.Box3().setFromObject(group)
   const size = box.getSize(new THREE.Vector3())
   const scale = 1 / Math.max(size.x, size.y, size.z, 0.01)
   group.scale.setScalar(scale)
+  layWeaponFlat(group)
   box.setFromObject(group)
   group.position.sub(box.getCenter(new THREE.Vector3()))
   group.position.y -= box.min.y
