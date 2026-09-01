@@ -81,11 +81,16 @@ export class StudioScene {
       object.position.y = 0.02
       this.applyGroundDefaults()
     } else if (mode === 'weapon') {
+      const mount = new THREE.Group()
       object.rotation.y = 0.35
-      object.updateMatrixWorld(true)
-      const box = new THREE.Box3().setFromObject(object)
-      object.position.y = Number.isFinite(box.min.y) ? -box.min.y + 0.02 : 0.02
+      mount.add(object)
+      mount.updateMatrixWorld(true)
+      const box = new THREE.Box3().setFromObject(mount)
+      mount.position.y = Number.isFinite(box.min.y) ? -box.min.y + 0.02 : 0.02
       this.applyWeaponDefaults()
+      this.pivot.add(mount)
+      this.fitCamera(mount)
+      return
     } else {
       object.position.y = propEyeLevel(object)
       this.applyPropDefaults()

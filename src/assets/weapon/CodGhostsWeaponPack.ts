@@ -64,7 +64,9 @@ function seatOnGround(group: THREE.Group): void {
 
   let box = new THREE.Box3().setFromObject(group)
   const center = box.getCenter(new THREE.Vector3())
-  group.position.sub(center)
+  // Pivot on the floor at XZ center — keeps guns on the turntable when rotated.
+  group.position.x -= center.x
+  group.position.z -= center.z
   group.updateMatrixWorld(true)
   box = new THREE.Box3().setFromObject(group)
   group.position.y -= box.min.y
