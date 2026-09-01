@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "/1v1gamemobile/",
+  base: process.env.GITHUB_PAGES === "true" ? "/1v1gamemobile/" : "/",
 });
