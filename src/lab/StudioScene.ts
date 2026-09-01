@@ -81,7 +81,7 @@ export class StudioScene {
       object.position.y = 0.02
       this.applyGroundDefaults()
     } else if (mode === 'weapon') {
-      object.position.y = 0.02
+      object.position.y = weaponEyeLevel(object)
       object.rotation.y = 0.35
       this.applyWeaponDefaults()
     } else {
@@ -209,4 +209,11 @@ function propEyeLevel(object: THREE.Object3D): number {
   const box = new THREE.Box3().setFromObject(object)
   if (!Number.isFinite(box.min.y) || box.isEmpty()) return 0
   return Math.max(0, -box.min.y)
+}
+
+function weaponEyeLevel(object: THREE.Object3D): number {
+  object.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(object)
+  if (!Number.isFinite(box.min.y) || box.isEmpty()) return 0.02
+  return Math.max(0.02, -box.min.y + 0.01)
 }

@@ -46,24 +46,47 @@ function countTriangles(root: THREE.Object3D): number {
   return Math.floor(n)
 }
 
-function layWeaponFlat(group: THREE.Group): void {
-  const box = new THREE.Box3().setFromObject(group)
-  const size = box.getSize(new THREE.Vector3())
+function seatOnGround(group: THREE.Group): void {
+  group.updateMatrixWorld(true)
+  let box = new THREE.Box3().setFromObject(group)
+  const center = box.getCenter(new THREE.Vector3())
+  group.position.sub(center)
+  group.updateMatrixWorld(true)
+  box = new THREE.Box3().setFromObject(group)
+  group.position.y -= box.min.y
+}
 
-  const ranked = [
-    { axis: 'x' as const, len: size.x },
-    { axis: 'y' as const, len: size.y },
-    { axis: 'z' as const, len: size.z },
-  ].sort((a, b) => b.len - a.len)
+/** Try a few 90° rotations so barrel length is horizontal and Y is the thin axis. */
+function pickFlatRotation(group: THREE.Group): void {
+  const candidates = [
+    new THREE.Euler(0, 0, Math.PI / 2),
+    new THREE.Euler(0, 0, -Math.PI / 2),
+    new THREE.Euler(-Math.PI / 2, 0, 0),
+    new THREE.Euler(Math.PI / 2, 0, 0),
+    new THREE.Euler(0, 0, 0),
+  ]
 
-  const long = ranked[0].axis
-  if (long === 'y') {
-    // Barrel points up in source file — lay length along +X.
-    group.rotation.z = Math.PI / 2
-  } else if (long === 'z') {
-    // Barrel along Z — pitch flat onto the turntable.
-    group.rotation.x = -Math.PI / 2
+  let best = candidates[0]
+  let bestScore = -Infinity
+
+  for (const euler of candidates) {
+    group.rotation.copy(euler)
+    group.updateMatrixWorld(true)
+    const box = new THREE.Box3().setFromObject(group)
+    const size = box.getSize(new THREE.Vector3())
+    const dims = [size.x, size.y, size.z]
+    const minDim = Math.min(...dims)
+    const maxDim = Math.max(...dims)
+    const yIsThinnest = size.y <= minDim * 1.05 ? 12 : size.y >= maxDim * 0.95 ? -12 : 0
+    const aspect = maxDim / Math.max(minDim, 0.001)
+    const score = yIsThinnest + aspect
+    if (score > bestScore) {
+      bestScore = score
+      best = euler
+    }
   }
+
+  group.rotation.copy(best)
 }
 
 function normalizeWeaponGroup(group: THREE.Group): THREE.Group {
@@ -71,10 +94,8 @@ function normalizeWeaponGroup(group: THREE.Group): THREE.Group {
   const size = box.getSize(new THREE.Vector3())
   const scale = 1 / Math.max(size.x, size.y, size.z, 0.01)
   group.scale.setScalar(scale)
-  layWeaponFlat(group)
-  box.setFromObject(group)
-  group.position.sub(box.getCenter(new THREE.Vector3()))
-  group.position.y -= box.min.y
+  pickFlatRotation(group)
+  seatOnGround(group)
   return group
 }
 
