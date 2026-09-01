@@ -11,6 +11,12 @@ npm run dev
 
 Open the local URL on your phone (same Wi‑Fi) or in a browser.
 
+## Play on iPad (Safari)
+
+After deploy, open:
+
+**https://delanoso.github.io/1v1gamemobile/**
+
 ## Assets
 
 - `public/models/call_of_duty_ghost_-_weapons.glb` — COD Ghosts weapons collection
