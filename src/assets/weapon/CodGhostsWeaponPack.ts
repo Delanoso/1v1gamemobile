@@ -32,7 +32,7 @@ export const COD_WEAPON_LABELS = [
   'Gun 11',
 ] as const
 
-let packPromise: Promise<THREE.Group[]> | null = null
+let clusterPromise: Promise<THREE.Group[]> | null = null
 
 function countTriangles(root: THREE.Object3D): number {
   let n = 0
@@ -46,8 +46,22 @@ function countTriangles(root: THREE.Object3D): number {
   return Math.floor(n)
 }
 
+function extractMesh(mesh: THREE.Mesh): THREE.Mesh {
+  mesh.updateMatrixWorld(true)
+  const baked = mesh.clone(true)
+  baked.applyMatrix4(mesh.matrixWorld)
+  baked.position.set(0, 0, 0)
+  baked.rotation.set(0, 0, 0)
+  baked.scale.set(1, 1, 1)
+  baked.castShadow = true
+  baked.receiveShadow = true
+  return baked
+}
+
 function seatOnGround(group: THREE.Group): void {
+  group.position.set(0, 0, 0)
   group.updateMatrixWorld(true)
+
   let box = new THREE.Box3().setFromObject(group)
   const center = box.getCenter(new THREE.Vector3())
   group.position.sub(center)
@@ -90,6 +104,11 @@ function pickFlatRotation(group: THREE.Group): void {
 }
 
 function normalizeWeaponGroup(group: THREE.Group): THREE.Group {
+  group.position.set(0, 0, 0)
+  group.rotation.set(0, 0, 0)
+  group.scale.set(1, 1, 1)
+  group.updateMatrixWorld(true)
+
   const box = new THREE.Box3().setFromObject(group)
   const size = box.getSize(new THREE.Vector3())
   const scale = 1 / Math.max(size.x, size.y, size.z, 0.01)
@@ -99,7 +118,7 @@ function normalizeWeaponGroup(group: THREE.Group): THREE.Group {
   return group
 }
 
-function clusterMeshes(scene: THREE.Object3D): THREE.Group[] {
+function buildMeshClusters(scene: THREE.Object3D): THREE.Group[] {
   scene.updateMatrixWorld(true)
 
   const items: { mesh: THREE.Mesh; cx: number }[] = []
@@ -128,39 +147,45 @@ function clusterMeshes(scene: THREE.Object3D): THREE.Group[] {
   return meshClusters.map((meshes) => {
     const group = new THREE.Group()
     for (const mesh of meshes) {
-      const clone = mesh.clone(true)
-      clone.castShadow = true
-      clone.receiveShadow = true
-      group.add(clone)
+      group.add(extractMesh(mesh))
     }
-    return normalizeWeaponGroup(group)
+    return group
   })
 }
 
-async function loadPack(): Promise<THREE.Group[]> {
-  const loader = new GLTFLoader()
-  const gltf = await loader.loadAsync(COD_GHOSTS_WEAPONS_GLB)
-  return clusterMeshes(gltf.scene)
+async function loadClusters(): Promise<THREE.Group[]> {
+  if (!clusterPromise) {
+    clusterPromise = (async () => {
+      const loader = new GLTFLoader()
+      const gltf = await loader.loadAsync(COD_GHOSTS_WEAPONS_GLB)
+      return buildMeshClusters(gltf.scene)
+    })()
+  }
+  return clusterPromise
 }
 
 export async function getCodWeaponCount(): Promise<number> {
-  const pack = await loadCodWeaponPack()
-  return pack.length
+  const clusters = await loadClusters()
+  return clusters.length
 }
 
 export async function loadCodWeaponPack(): Promise<THREE.Group[]> {
-  if (!packPromise) packPromise = loadPack()
-  return packPromise
+  const clusters = await loadClusters()
+  return clusters.map((cluster) => {
+    const group = cluster.clone(true)
+    return normalizeWeaponGroup(group)
+  })
 }
 
 export async function buildCodGhostsWeapon(index: number): Promise<{
   group: THREE.Group
   triangleCount: number
 }> {
-  const pack = await loadCodWeaponPack()
-  if (index < 0 || index >= pack.length) {
-    throw new Error(`COD weapon index ${index} out of range (0..${pack.length - 1})`)
+  const clusters = await loadClusters()
+  if (index < 0 || index >= clusters.length) {
+    throw new Error(`COD weapon index ${index} out of range (0..${clusters.length - 1})`)
   }
-  const group = pack[index].clone(true)
+  const group = clusters[index].clone(true)
+  normalizeWeaponGroup(group)
   return { group, triangleCount: countTriangles(group) }
 }
