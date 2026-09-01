@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0a0f14" />
+    <title>1v1 Armory</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="hud">
+        <p class="eyebrow">Call of Duty Ghosts</p>
+        <h1>Weapon Armory</h1>
+        <p class="hint">Drag to rotate · Pinch to zoom</p>
+      </header>
+
+      <div id="viewport" aria-label="3D weapon viewer"></div>
+
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading weapons...</p>
+      </div>
+
+      <footer class="controls">
+        <button id="reset-view" type="button">Reset View</button>
+        <button id="auto-rotate" type="button" class="primary">Auto Rotate</button>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
