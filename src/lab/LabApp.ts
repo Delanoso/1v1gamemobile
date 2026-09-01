@@ -8,6 +8,7 @@ import { buildBarrel, type BarrelVariant } from '../assets/barrel/BarrelAsset'
 import { buildCrate, type CrateVariant } from '../assets/crate/CrateAsset'
 import { buildPallet, type PalletVariant } from '../assets/pallet/PalletAsset'
 import { buildWeapon, type WeaponVariant } from '../assets/weapon/WeaponAsset'
+import { buildCodGhostsWeapon, COD_GHOSTS_WEAPONS_GLB, COD_WEAPON_LABELS } from '../assets/weapon/CodGhostsWeaponPack'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
 export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate' | 'pallet' | 'weapon'
@@ -32,7 +33,7 @@ const GLB_HINTS: Partial<Record<LabAsset, string>> = {
     'public/assets/maps/container-yard/crate-small.glb · crate-medium.glb · crate-large.glb · crate-long.glb · crate-flat.glb',
   pallet:
     'public/assets/maps/container-yard/pallet-standard.glb · pallet-double.glb · pallet-plastic.glb',
-  weapon: 'public/assets/weapons/m4a1.glb · shotgun.glb · svd.glb · ak74.glb',
+  weapon: 'public/assets/weapons/call_of_duty_ghost_-_weapons.glb (COD Ghosts pack — 11 guns)',
 }
 
 export class LabApp {
@@ -48,6 +49,7 @@ export class LabApp {
   private crateVariant: CrateVariant = 'medium'
   private palletVariant: PalletVariant = 'standard'
   private weaponVariant: WeaponVariant = 'shotgun'
+  private codWeaponIndex = 6
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
@@ -228,21 +230,14 @@ export class LabApp {
 
     if (this.asset === 'weapon') {
       const row = document.createElement('div')
-      row.className = 'lab-colors lab-colors-wrap'
-      const variants: WeaponVariant[] = ['m4a1', 'shotgun', 'svd', 'ak74']
-      const labels: Record<WeaponVariant, string> = {
-        m4a1: 'M4A1',
-        shotgun: 'Shotgun',
-        svd: 'DMR',
-        ak74: 'AK-74',
-      }
-      variants.forEach((v) => {
+      row.className = 'lab-colors lab-colors-wrap lab-colors-scroll'
+      COD_WEAPON_LABELS.forEach((label, index) => {
         const b = document.createElement('button')
         b.type = 'button'
-        b.textContent = labels[v]
-        b.className = `swatch swatch-weapon-${v}${v === this.weaponVariant ? ' active' : ''}`
+        b.textContent = label
+        b.className = `swatch swatch-weapon-cod${index === this.codWeaponIndex ? ' active' : ''}`
         b.addEventListener('click', () => {
-          this.weaponVariant = v
+          this.codWeaponIndex = index
           row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
           b.classList.add('active')
           void this.loadAsset()
@@ -373,22 +368,23 @@ export class LabApp {
     }
 
     if (this.asset === 'weapon') {
-      const result = await buildWeapon(this.weaponVariant)
-      this.studio.setAsset(result.group, 'weapon')
-      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
-      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
-      const variantNames: Record<WeaponVariant, string> = {
-        m4a1: 'M4A1',
-        shotgun: 'Shotgun',
-        svd: 'DMR',
-        ak74: 'AK-74',
+      try {
+        const result = await buildCodGhostsWeapon(this.codWeaponIndex)
+        this.studio.setAsset(result.group, 'weapon')
+        this.sourceEl.textContent = 'Source: COD Ghosts GLB pack'
+        this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+        this.statusEl.textContent = `${COD_WEAPON_LABELS[this.codWeaponIndex]} — from Call of Duty Ghosts weapon pack. Rotate and review on iPad.`
+      } catch {
+        const result = await buildWeapon(this.weaponVariant)
+        this.studio.setAsset(result.group, 'weapon')
+        this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+        this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+        this.statusEl.textContent =
+          result.source === 'glb'
+            ? 'Using imported weapon GLB.'
+            : 'Procedural fallback — drop COD pack at public/assets/weapons/call_of_duty_ghost_-_weapons.glb'
       }
-      this.statusEl.textContent =
-        result.source === 'glb'
-          ? `Using imported ${variantNames[this.weaponVariant]} GLB.`
-          : this.weaponVariant === 'shotgun'
-            ? 'Procedural v4 — extruded stock, vent rib, integrated pump. Drop shotgun.glb for studio quality.'
-            : `Procedural blockout — drop GLB at public/assets/weapons/ for reference quality.`
+      this.hintEl.innerHTML = `Drag to rotate · Turntable auto-spin · Pack file<br><code>${COD_GHOSTS_WEAPONS_GLB}</code>`
     }
   }
 

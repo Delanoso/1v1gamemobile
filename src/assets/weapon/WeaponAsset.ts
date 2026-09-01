@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { buildCodGhostsWeapon, COD_WEAPON_BY_VARIANT } from './CodGhostsWeaponPack'
 import { barrelZ, boxW, ringZ } from './WeaponGeometry'
 import { buildShotgunMeshes } from './ShotgunAsset'
 import {
@@ -175,6 +176,15 @@ export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Grou
 }
 
 export async function buildWeapon(variant: WeaponVariant = 'm4a1'): Promise<WeaponBuildResult> {
+  try {
+    const cod = await buildCodGhostsWeapon(COD_WEAPON_BY_VARIANT[variant])
+    const group = new THREE.Group()
+    group.add(cod.group)
+    return { group, source: 'glb', triangleCount: cod.triangleCount }
+  } catch {
+    /* fall through to per-weapon GLB or procedural */
+  }
+
   try {
     const loader = new GLTFLoader()
     const gltf = await loader.loadAsync(GLB_PATHS[variant])
