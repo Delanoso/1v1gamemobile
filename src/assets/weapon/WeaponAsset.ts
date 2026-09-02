@@ -5,7 +5,7 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { buildCodGhostsWeapon, COD_WEAPON_BY_VARIANT } from './CodGhostsWeaponPack'
-import { buildImportedWeapon } from './ImportedWeaponPack'
+import { buildImportedWeapon, IMPORTED_WEAPONS } from './ImportedWeaponPack'
 import { barrelZ, boxW, ringZ } from './WeaponGeometry'
 import { buildShotgunMeshes } from './ShotgunAsset'
 import {
@@ -176,46 +176,43 @@ export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Grou
   return vm
 }
 
-/** Lay a horizontal imported weapon along camera forward (-Z) for first-person view. */
-export function orientImportedViewModel(source: THREE.Group): THREE.Group {
-  const vm = source.clone(true)
-  vm.rotation.set(0, 0, 0)
-  vm.updateMatrixWorld(true)
-
-  const box = new THREE.Box3().setFromObject(vm)
-  const size = box.getSize(new THREE.Vector3())
-  const forward = new THREE.Vector3(0, 0, -1)
-
-  const axes = [
-    new THREE.Vector3(1, 0, 0),
-    new THREE.Vector3(0, 1, 0),
-    new THREE.Vector3(0, 0, 1),
-  ]
-  const lengths = [size.x, size.y, size.z]
-  const longIdx = lengths.indexOf(Math.max(...lengths))
-  const longAxis = axes[longIdx]
-
-  vm.quaternion.setFromUnitVectors(longAxis, forward)
-  vm.rotateX(0.02)
-  vm.updateMatrixWorld(true)
-
-  const targetLength = 0.42
-  const length = Math.max(...lengths)
-  vm.scale.setScalar(targetLength / Math.max(length, 0.01))
-
-  vm.updateMatrixWorld(true)
-  const bounds = new THREE.Box3().setFromObject(vm)
-  vm.position.set(
-    0.14 - bounds.min.x,
-    -0.15 - bounds.min.y,
-    -0.08 - bounds.max.z,
-  )
-  return vm
-}
-
+/** MW2022 raw export: barrel +Z. Orient for FPS with barrel along -Z. */
 export async function buildImportedViewModel(): Promise<THREE.Group> {
-  const { group } = await buildImportedWeapon('m4-tan')
-  return orientImportedViewModel(group)
+  const entry = IMPORTED_WEAPONS.find((w) => w.id === 'm4-tan')
+  if (!entry) throw new Error('Unknown imported weapon: m4-tan')
+
+  const loader = new GLTFLoader()
+  const gltf = await loader.loadAsync(entry.path)
+  const gun = gltf.scene.clone()
+  gun.traverse((o) => {
+    if (o instanceof THREE.Mesh) {
+      o.castShadow = true
+      o.receiveShadow = true
+    }
+  })
+
+  gun.updateMatrixWorld(true)
+  const rawBox = new THREE.Box3().setFromObject(gun)
+  const rawSize = rawBox.getSize(new THREE.Vector3())
+  gun.position.sub(rawBox.getCenter(new THREE.Vector3()))
+  gun.scale.setScalar(0.35 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.01))
+
+  const mount = new THREE.Group()
+  mount.add(gun)
+  mount.rotation.set(0.08, Math.PI, 0)
+  mount.updateMatrixWorld(true)
+
+  const box = new THREE.Box3().setFromObject(mount)
+  gun.position.sub(box.getCenter(new THREE.Vector3()))
+
+  mount.traverse((o) => {
+    if (o instanceof THREE.Mesh) {
+      o.frustumCulled = false
+      o.renderOrder = 10
+    }
+  })
+
+  return mount
 }
 
 export async function buildWeapon(variant: WeaponVariant = 'm4a1'): Promise<WeaponBuildResult> {
