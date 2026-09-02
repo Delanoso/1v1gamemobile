@@ -82,13 +82,12 @@ export class StudioScene {
       this.applyGroundDefaults()
     } else if (mode === 'weapon') {
       const mount = new THREE.Group()
-      object.rotation.y = 0.25
       mount.add(object)
       mount.updateMatrixWorld(true)
       const box = new THREE.Box3().setFromObject(mount)
       mount.position.y = Number.isFinite(box.min.y) ? -box.min.y + 0.02 : 0.02
       this.applyWeaponDefaults()
-      this.lookAtY = Math.max(0.35, box.getSize(new THREE.Vector3()).y * 0.45)
+      this.lookAtY = Math.max(0.08, box.getSize(new THREE.Vector3()).y * 0.55)
       this.pivot.add(mount)
       this.fitCamera(mount)
       return
@@ -132,10 +131,10 @@ export class StudioScene {
   }
 
   private applyWeaponDefaults(): void {
-    this.rotY = 0.55
-    this.rotX = 0.18
-    this.lookAtY = 0.42
-    this.zoom = 3.4
+    this.rotY = 0.52
+    this.rotX = 0.1
+    this.lookAtY = 0.1
+    this.zoom = 2.8
   }
 
   private applyGroundDefaults(): void {

@@ -99,13 +99,15 @@ function pickStandRotation(group: THREE.Group): void {
 
 function pickFlatRotation(group: THREE.Group): void {
   const candidates = [
+    new THREE.Euler(0, 0, 0),
     new THREE.Euler(0, 0, Math.PI / 2),
     new THREE.Euler(0, 0, -Math.PI / 2),
-    new THREE.Euler(-Math.PI / 2, 0, 0),
-    new THREE.Euler(Math.PI / 2, 0, 0),
     new THREE.Euler(0, Math.PI / 2, 0),
     new THREE.Euler(0, -Math.PI / 2, 0),
-    new THREE.Euler(0, 0, 0),
+    new THREE.Euler(-Math.PI / 2, 0, 0),
+    new THREE.Euler(Math.PI / 2, 0, 0),
+    new THREE.Euler(0, Math.PI, 0),
+    new THREE.Euler(0, 0, Math.PI),
   ]
 
   let best = candidates[0]
@@ -116,12 +118,12 @@ function pickFlatRotation(group: THREE.Group): void {
     group.updateMatrixWorld(true)
     const box = new THREE.Box3().setFromObject(group)
     const size = box.getSize(new THREE.Vector3())
-    const dims = [size.x, size.y, size.z]
-    const minDim = Math.min(...dims)
-    const maxDim = Math.max(...dims)
-    const yIsThinnest = size.y <= minDim * 1.05 ? 12 : size.y >= maxDim * 0.95 ? -12 : 0
+    const minDim = Math.min(size.x, size.y, size.z)
+    const maxDim = Math.max(size.x, size.y, size.z)
+    const xIsBarrel = size.x >= Math.max(size.y, size.z) * 0.9 ? 18 : 0
+    const yIsThin = size.y <= minDim * 1.08 ? 16 : size.y >= maxDim * 0.9 ? -16 : 0
     const aspect = maxDim / Math.max(minDim, 0.001)
-    const score = yIsThinnest + aspect
+    const score = xIsBarrel + yIsThin + aspect
     if (score > bestScore) {
       bestScore = score
       best = euler
@@ -131,7 +133,7 @@ function pickFlatRotation(group: THREE.Group): void {
   group.rotation.copy(best)
 }
 
-export function normalizeWeaponGroup(group: THREE.Group, standing = true): THREE.Group {
+export function normalizeWeaponGroup(group: THREE.Group, horizontal = true): THREE.Group {
   group.position.set(0, 0, 0)
   group.rotation.set(0, 0, 0)
   group.scale.set(1, 1, 1)
@@ -143,8 +145,8 @@ export function normalizeWeaponGroup(group: THREE.Group, standing = true): THREE
   const size = box.getSize(new THREE.Vector3())
   const scale = 1 / Math.max(size.x, size.y, size.z, 0.01)
   group.scale.setScalar(scale)
-  if (standing) pickStandRotation(group)
-  else pickFlatRotation(group)
+  if (horizontal) pickFlatRotation(group)
+  else pickStandRotation(group)
   seatOnGround(group)
   return group
 }
