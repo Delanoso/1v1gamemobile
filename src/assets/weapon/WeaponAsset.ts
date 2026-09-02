@@ -180,14 +180,14 @@ export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Grou
 
 /** Hip pose used by ViewModel — exported for rig validation before GLB swap. */
 export const VIEWMODEL_HIP = {
-  position: new THREE.Vector3(0.11, -0.18, -0.06),
-  rotation: new THREE.Euler(0.11, 0.18, -0.03, 'YXZ'),
+  position: new THREE.Vector3(0.065, -0.182, -0.002),
+  rotation: new THREE.Euler(0.16, 0.128, -0.232, 'YXZ'),
 }
 
 /** ADS pose — optic at crosshair; holo offset handled on model. */
 export const VIEWMODEL_ADS = {
-  position: new THREE.Vector3(0, 0, -0.12),
-  rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
+  position: new THREE.Vector3(-0.002, -0.013, -0.071),
+  rotation: new THREE.Euler(0.104, 0.048, -0.248, 'YXZ'),
 }
 
 function meshUsesMaterial(mesh: THREE.Mesh, names: string[]): boolean {
@@ -376,7 +376,7 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
   return buildFpsViewmodelRig(gun)
 }
 
-const VIEWMODEL_CACHE_VERSION = 14
+const VIEWMODEL_CACHE_VERSION = 15
 let m4ViewModelCache: Promise<THREE.Group> | null = null
 let m4ViewModelCacheVersion = 0
 
