@@ -6,6 +6,11 @@ export interface GlbBuildResult {
   triangleCount: number
 }
 
+/** MW2022 PBR exports: barrel along +Z, lay flat along +X like COD Mobile. */
+export const MW2022_HORIZONTAL = new THREE.Euler(0, -Math.PI / 2, 0)
+
+export type WeaponNormalizeMode = 'mw2022' | 'cod-pack' | 'auto'
+
 function countTriangles(root: THREE.Object3D): number {
   let n = 0
   root.traverse((o) => {
@@ -66,48 +71,20 @@ export function assembleExplodedParts(group: THREE.Group): void {
   }
 }
 
-function pickStandRotation(group: THREE.Group): void {
-  const candidates = [
-    new THREE.Euler(0, 0, 0),
-    new THREE.Euler(0, Math.PI / 2, 0),
-    new THREE.Euler(0, -Math.PI / 2, 0),
-    new THREE.Euler(0, Math.PI, 0),
-    new THREE.Euler(Math.PI / 2, 0, 0),
-    new THREE.Euler(-Math.PI / 2, 0, 0),
-  ]
-
-  let best = candidates[0]
-  let bestScore = -Infinity
-
-  for (const euler of candidates) {
-    group.rotation.copy(euler)
-    group.updateMatrixWorld(true)
-    const box = new THREE.Box3().setFromObject(group)
-    const size = box.getSize(new THREE.Vector3())
-    const yIsLongest = size.y >= Math.max(size.x, size.z) * 0.92 ? 14 : 0
-    const yIsShortest = size.y <= Math.min(size.x, size.z) * 1.08 ? -14 : 0
-    const footprint = size.x * size.z
-    const score = yIsLongest + yIsShortest - footprint * 0.5
-    if (score > bestScore) {
-      bestScore = score
-      best = euler
-    }
-  }
-
-  group.rotation.copy(best)
+function applyHorizontalLayout(group: THREE.Group, rotation = MW2022_HORIZONTAL): void {
+  group.rotation.copy(rotation)
 }
 
 function pickFlatRotation(group: THREE.Group): void {
   const candidates = [
-    new THREE.Euler(0, 0, 0),
-    new THREE.Euler(0, 0, Math.PI / 2),
-    new THREE.Euler(0, 0, -Math.PI / 2),
+    MW2022_HORIZONTAL,
     new THREE.Euler(0, Math.PI / 2, 0),
-    new THREE.Euler(0, -Math.PI / 2, 0),
     new THREE.Euler(-Math.PI / 2, 0, 0),
     new THREE.Euler(Math.PI / 2, 0, 0),
+    new THREE.Euler(0, 0, 0),
     new THREE.Euler(0, Math.PI, 0),
-    new THREE.Euler(0, 0, Math.PI),
+    new THREE.Euler(0, 0, Math.PI / 2),
+    new THREE.Euler(0, 0, -Math.PI / 2),
   ]
 
   let best = candidates[0]
@@ -133,20 +110,27 @@ function pickFlatRotation(group: THREE.Group): void {
   group.rotation.copy(best)
 }
 
-export function normalizeWeaponGroup(group: THREE.Group, horizontal = true): THREE.Group {
+export function normalizeWeaponGroup(
+  group: THREE.Group,
+  mode: WeaponNormalizeMode = 'auto',
+  rotation?: THREE.Euler,
+): THREE.Group {
   group.position.set(0, 0, 0)
   group.rotation.set(0, 0, 0)
   group.scale.set(1, 1, 1)
   group.updateMatrixWorld(true)
 
-  assembleExplodedParts(group)
+  if (mode === 'cod-pack') assembleExplodedParts(group)
 
   const box = new THREE.Box3().setFromObject(group)
   const size = box.getSize(new THREE.Vector3())
   const scale = 1 / Math.max(size.x, size.y, size.z, 0.01)
   group.scale.setScalar(scale)
-  if (horizontal) pickFlatRotation(group)
-  else pickStandRotation(group)
+
+  if (rotation) applyHorizontalLayout(group, rotation)
+  else if (mode === 'mw2022') applyHorizontalLayout(group, MW2022_HORIZONTAL)
+  else pickFlatRotation(group)
+
   seatOnGround(group)
   return group
 }
@@ -168,6 +152,8 @@ export function normalizeCharacterGroup(group: THREE.Group, targetHeight = 1.75)
 export async function loadGlbModel(
   path: string,
   layout: 'weapon' | 'character' = 'weapon',
+  weaponMode: WeaponNormalizeMode = 'mw2022',
+  rotation?: THREE.Euler,
 ): Promise<GlbBuildResult> {
   const loader = new GLTFLoader()
   const gltf = await loader.loadAsync(path)
@@ -182,7 +168,7 @@ export async function loadGlbModel(
   const group = new THREE.Group()
   group.add(model)
   if (layout === 'character') normalizeCharacterGroup(group)
-  else normalizeWeaponGroup(group)
+  else normalizeWeaponGroup(group, weaponMode, rotation)
 
   return { group, triangleCount: countTriangles(group) }
 }

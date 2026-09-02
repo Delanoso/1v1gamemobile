@@ -1,4 +1,5 @@
-import { loadGlbModel, type GlbBuildResult } from '../glb/GlbModelLoader'
+import * as THREE from 'three'
+import { loadGlbModel, MW2022_HORIZONTAL, type GlbBuildResult } from '../glb/GlbModelLoader'
 
 export const IMPORTED_WEAPONS = [
   {
@@ -25,8 +26,16 @@ export const IMPORTED_WEAPONS = [
 
 export type ImportedWeaponId = (typeof IMPORTED_WEAPONS)[number]['id']
 
+/** Per-weapon rotation fixes when the default MW2022 layout is wrong. */
+const IMPORTED_ROTATIONS: Record<ImportedWeaponId, THREE.Euler> = {
+  'm4-tan': MW2022_HORIZONTAL,
+  fennec: new THREE.Euler(0, Math.PI / 2, 0),
+  kimber: MW2022_HORIZONTAL,
+  renetti: MW2022_HORIZONTAL,
+}
+
 export async function buildImportedWeapon(id: ImportedWeaponId): Promise<GlbBuildResult> {
   const entry = IMPORTED_WEAPONS.find((w) => w.id === id)
   if (!entry) throw new Error(`Unknown imported weapon: ${id}`)
-  return loadGlbModel(entry.path, 'weapon')
+  return loadGlbModel(entry.path, 'weapon', 'mw2022', IMPORTED_ROTATIONS[id])
 }

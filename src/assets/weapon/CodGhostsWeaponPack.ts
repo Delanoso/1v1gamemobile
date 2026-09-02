@@ -113,9 +113,9 @@ export async function getCodWeaponCount(): Promise<number> {
 
 export async function loadCodWeaponPack(): Promise<THREE.Group[]> {
   const clusters = await loadClusters()
-  return clusters.map((cluster) => {
+  return clusters.map((cluster, index) => {
     const group = cluster.clone(true)
-    return normalizeWeaponGroup(group)
+    return normalizeWeaponGroup(group, 'cod-pack')
   })
 }
 
@@ -128,6 +128,6 @@ export async function buildCodGhostsWeapon(index: number): Promise<{
     throw new Error(`COD weapon index ${index} out of range (0..${clusters.length - 1})`)
   }
   const group = clusters[index].clone(true)
-  normalizeWeaponGroup(group)
+  normalizeWeaponGroup(group, 'cod-pack')
   return { group, triangleCount: countTriangles(group) }
 }
