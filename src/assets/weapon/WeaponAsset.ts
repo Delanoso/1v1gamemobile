@@ -184,6 +184,25 @@ export const VIEWMODEL_HIP = {
   rotation: new THREE.Euler(0.06, 0.22, -0.03, 'YXZ'),
 }
 
+/** ADS pose — keep yaw (don't zero out) so stock doesn't swing vertical. */
+export const VIEWMODEL_ADS = {
+  position: new THREE.Vector3(0, -0.02, -0.10),
+  rotation: new THREE.Euler(0.05, 0.14, -0.02, 'YXZ'),
+}
+
+/** Shift model so optic (upper-forward on rail) aligns with group origin for ADS. */
+export function computeAdsAimOffset(rig: THREE.Object3D): THREE.Vector3 {
+  rig.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(rig)
+  const size = box.getSize(new THREE.Vector3())
+  const aim = new THREE.Vector3(
+    (box.min.x + box.max.x) * 0.5,
+    box.min.y + size.y * 0.78,
+    box.min.z + size.z * 0.30,
+  )
+  return aim.multiplyScalar(-1)
+}
+
 /** MW2022 export: barrel +Z. Single proven FPS hold rotation (no auto-pick). */
 const FPS_VIEW_ROTATION = new THREE.Euler(0.08, Math.PI, -0.25, 'YXZ')
 
@@ -303,7 +322,7 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
   return buildFpsViewmodelRig(gun)
 }
 
-const VIEWMODEL_CACHE_VERSION = 10
+const VIEWMODEL_CACHE_VERSION = 11
 let m4ViewModelCache: Promise<THREE.Group> | null = null
 let m4ViewModelCacheVersion = 0
 

@@ -1,16 +1,18 @@
 import * as THREE from 'three'
 import { GAME } from '../../config/gameConfig'
 import {
+  VIEWMODEL_ADS,
   VIEWMODEL_HIP,
   buildViewModelGroup,
+  computeAdsAimOffset,
   isViewmodelVisibleAtHip,
   preloadM4ViewModel,
 } from '../../assets/weapon/WeaponAsset'
 
 const HIP_POS = VIEWMODEL_HIP.position
 const HIP_ROT = VIEWMODEL_HIP.rotation
-const ADS_POS = new THREE.Vector3(0.0, -0.09, -0.12)
-const ADS_ROT = new THREE.Euler(0.01, 0.0, 0, 'YXZ')
+const ADS_POS = VIEWMODEL_ADS.position
+const ADS_ROT = VIEWMODEL_ADS.rotation
 const GLB_LOAD_TIMEOUT_MS = 8000
 
 function disposeModel(root: THREE.Object3D): void {
@@ -27,17 +29,19 @@ function disposeModel(root: THREE.Object3D): void {
 export class WeaponViewModel {
   readonly group = new THREE.Group()
   private model: THREE.Group
+  private adsAimOffset = new THREE.Vector3()
   private adsBlend = 0
   private kick = 0
   private sway = new THREE.Vector2()
   private readonly tmpPos = new THREE.Vector3()
   private readonly tmpEuler = new THREE.Euler(0, 0, 0, 'YXZ')
+  private readonly tmpModelPos = new THREE.Vector3()
 
   constructor() {
     this.group.rotation.order = 'YXZ'
     this.model = buildViewModelGroup('m4a1')
+    this.adsAimOffset.copy(computeAdsAimOffset(this.model))
     this.group.add(this.model)
-    // Hide blocky procedural placeholder until GLB is ready (or load times out).
     this.group.visible = false
     void this.loadM4Tan()
   }
@@ -46,6 +50,7 @@ export class WeaponViewModel {
     this.group.remove(this.model)
     disposeModel(this.model)
     this.model = next
+    this.adsAimOffset.copy(computeAdsAimOffset(this.model))
     this.group.add(this.model)
   }
 
@@ -107,6 +112,9 @@ export class WeaponViewModel {
       this.tmpEuler.y + this.sway.x * 0.35,
       this.tmpEuler.z + this.sway.y * 0.25,
     )
-    this.model.position.set(0, 0, -this.kick * 0.05)
+
+    this.tmpModelPos.copy(this.adsAimOffset).multiplyScalar(this.adsBlend)
+    this.tmpModelPos.z -= this.kick * 0.05
+    this.model.position.copy(this.tmpModelPos)
   }
 }
