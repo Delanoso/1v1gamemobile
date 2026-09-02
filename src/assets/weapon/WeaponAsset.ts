@@ -186,7 +186,7 @@ export const VIEWMODEL_HIP = {
 
 /** ADS pose — optic at crosshair; holo offset handled on model. */
 export const VIEWMODEL_ADS = {
-  position: new THREE.Vector3(0.03, 0.018, -0.13),
+  position: new THREE.Vector3(0, 0, -0.12),
   rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
 }
 
@@ -206,35 +206,15 @@ function collectSightMeshes(rig: THREE.Object3D): THREE.Mesh[] {
   return holo.length > 0 ? holo : glass
 }
 
-/** Red-dot aim point in rig local space (glass lens preferred). */
+/** Holo housing aim point in rig local space (lens window, not housing center). */
 export function getSightLocalAimPoint(rig: THREE.Object3D, out: THREE.Vector3): boolean {
-  rig.updateMatrixWorld(true)
-  const glass: THREE.Mesh[] = []
-  const holo: THREE.Mesh[] = []
-  rig.traverse((o) => {
-    if (!(o instanceof THREE.Mesh)) return
-    if (meshUsesMaterial(o, ['glass'])) glass.push(o)
-    else if (meshUsesMaterial(o, ['holo'])) holo.push(o)
-  })
-  const meshes = glass.length > 0 ? glass : holo
-  if (meshes.length === 0) return false
-
-  const box = new THREE.Box3()
-  for (const mesh of meshes) box.expandByObject(mesh)
-  box.getCenter(out)
-  rig.worldToLocal(out)
-  return true
-}
-
-/** Holo housing bounds in rig local space (for HUD frame sizing). */
-export function getSightLocalBox(rig: THREE.Object3D, out: THREE.Box3): boolean {
   rig.updateMatrixWorld(true)
   const meshes = collectSightMeshes(rig)
   if (meshes.length === 0) return false
 
-  out.makeEmpty()
-  const worldBox = new THREE.Box3()
+  const localBox = new THREE.Box3()
   const corner = new THREE.Vector3()
+  const worldBox = new THREE.Box3()
   for (const mesh of meshes) {
     worldBox.setFromObject(mesh)
     const { min, max } = worldBox
@@ -243,18 +223,28 @@ export function getSightLocalBox(rig: THREE.Object3D, out: THREE.Box3): boolean 
         for (const z of [min.z, max.z]) {
           corner.set(x, y, z)
           rig.worldToLocal(corner)
-          out.expandByPoint(corner)
+          localBox.expandByPoint(corner)
         }
       }
     }
   }
+
+  const size = localBox.getSize(new THREE.Vector3())
+  out.set(
+    (localBox.min.x + localBox.max.x) * 0.5,
+    localBox.min.y + size.y * 0.34,
+    (localBox.min.z + localBox.max.z) * 0.5,
+  )
   return true
 }
 
-/** Shift model so holo / red-dot glass aligns with group origin for ADS. */
+/** Shift model so holo center sits on group origin for ADS. */
 export function computeAdsAimOffset(rig: THREE.Object3D): THREE.Vector3 {
   const aim = new THREE.Vector3()
-  if (getSightLocalAimPoint(rig, aim)) return aim.multiplyScalar(-1)
+  if (getSightLocalAimPoint(rig, aim)) {
+    const offset = aim.multiplyScalar(-1)
+    if (offset.length() < 0.4) return offset
+  }
 
   rig.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(rig)
@@ -386,7 +376,7 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
   return buildFpsViewmodelRig(gun)
 }
 
-const VIEWMODEL_CACHE_VERSION = 11
+const VIEWMODEL_CACHE_VERSION = 14
 let m4ViewModelCache: Promise<THREE.Group> | null = null
 let m4ViewModelCacheVersion = 0
 
