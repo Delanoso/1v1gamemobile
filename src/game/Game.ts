@@ -16,6 +16,12 @@ import { RainEffect } from './effects/RainEffect'
 import { HUD } from '../ui/HUD'
 import { MainMenu, type MenuAction } from '../ui/MainMenu'
 import { buildFederationOperator } from '../assets/operator/OperatorAsset'
+import {
+  getRendererPixelRatio,
+  shouldLoadMenuOperator,
+  usePostProcessing,
+  useShadows,
+} from '../utils/deviceProfile'
 
 type Phase = 'menu' | 'play'
 
@@ -60,12 +66,12 @@ export class Game {
     this.host.appendChild(this.overlay)
 
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: 'high-performance',
+      antialias: usePostProcessing(),
+      powerPreference: usePostProcessing() ? 'high-performance' : 'default',
     })
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    this.renderer.setPixelRatio(getRendererPixelRatio())
     this.renderer.setSize(window.innerWidth, window.innerHeight)
-    this.renderer.shadowMap.enabled = true
+    this.renderer.shadowMap.enabled = useShadows()
     this.renderer.shadowMap.type = THREE.PCFShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -138,18 +144,22 @@ export class Game {
     this.scene.add(createSkyDome())
     this.rain = new RainEffect()
     this.scene.add(this.rain.group)
-    this.post = new PostPipeline(
-      this.renderer,
-      this.scene,
-      this.player.camera,
-      window.innerWidth,
-      window.innerHeight,
-    )
+    this.post = usePostProcessing()
+      ? new PostPipeline(
+          this.renderer,
+          this.scene,
+          this.player.camera,
+          window.innerWidth,
+          window.innerHeight,
+        )
+      : null
 
     void this.loadOperator()
   }
 
   private async loadOperator(): Promise<void> {
+    if (!shouldLoadMenuOperator()) return
+
     try {
       const { group } = await buildFederationOperator()
       group.position.copy(this.spawnPoint)
@@ -215,6 +225,7 @@ export class Game {
         this.muzzle.intensity = this.muzzleTimer > 0 ? 2.8 : 0
       }
       this.post?.render()
+      if (!this.post) this.renderer.render(this.scene, this.player.camera)
     } else {
       const t = this.clock.elapsedTime
       const orbit = 14

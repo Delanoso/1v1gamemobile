@@ -8,6 +8,7 @@ import {
   isViewmodelVisibleAtHip,
   preloadM4ViewModel,
 } from '../../assets/weapon/WeaponAsset'
+import { deviceProfile } from '../../utils/deviceProfile'
 
 const HIP_POS = VIEWMODEL_HIP.position
 const HIP_ROT = VIEWMODEL_HIP.rotation
@@ -79,7 +80,7 @@ export class WeaponViewModel {
     try {
       const glbModel = await preloadM4ViewModel()
       window.clearTimeout(timer)
-      if (isViewmodelVisibleAtHip(glbModel)) {
+      if (deviceProfile.isMobile || isViewmodelVisibleAtHip(glbModel)) {
         reveal(glbModel)
         return
       }
