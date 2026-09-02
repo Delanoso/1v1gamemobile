@@ -186,7 +186,7 @@ export const VIEWMODEL_HIP = {
 
 /** ADS pose — barrel level with camera forward, optic at crosshair. */
 export const VIEWMODEL_ADS = {
-  position: new THREE.Vector3(0, -0.09, -0.12),
+  position: new THREE.Vector3(0, -0.045, -0.12),
   rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
 }
 
@@ -213,7 +213,7 @@ export function computeAdsAimOffset(rig: THREE.Object3D): THREE.Vector3 {
     box.getCenter(aim)
     rig.worldToLocal(aim)
     // Nudge aim below holo center so the gun sits lower in frame (COD-style).
-    aim.y += 0.045
+    aim.y += 0.02
     return aim.multiplyScalar(-1)
   }
 
