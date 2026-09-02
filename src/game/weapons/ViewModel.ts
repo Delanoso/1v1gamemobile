@@ -112,20 +112,24 @@ export class WeaponViewModel {
       ? Math.sin(performance.now() * 0.012) * (moveSpeed > 5 ? 0.012 : 0.008) * (1 - this.adsBlend * 0.9)
       : 0
 
+    const adsLock = THREE.MathUtils.smoothstep(this.adsBlend, 0.75, 1)
+    const posSway = 1 - adsLock
+    const rotSway = 1 - adsLock
+
     this.tmpPos.lerpVectors(HIP_POS, ADS_POS, this.adsBlend)
     this.tmpEuler.x = THREE.MathUtils.lerp(HIP_ROT.x, ADS_ROT.x, this.adsBlend)
     this.tmpEuler.y = THREE.MathUtils.lerp(HIP_ROT.y, ADS_ROT.y, this.adsBlend)
     this.tmpEuler.z = THREE.MathUtils.lerp(HIP_ROT.z, ADS_ROT.z, this.adsBlend)
 
     this.group.position.set(
-      this.tmpPos.x + this.sway.x,
-      this.tmpPos.y + this.sway.y + bob,
+      this.tmpPos.x + this.sway.x * posSway,
+      this.tmpPos.y + this.sway.y * posSway + bob,
       this.tmpPos.z - this.kick * 0.2 * kickScale,
     )
     this.group.rotation.set(
-      this.tmpEuler.x + this.kick * kickScale,
-      this.tmpEuler.y + this.sway.x * 0.35 * swayScale,
-      this.tmpEuler.z + this.sway.y * 0.25 * swayScale,
+      this.tmpEuler.x + this.kick * kickScale * rotSway,
+      this.tmpEuler.y + this.sway.x * 0.35 * rotSway,
+      this.tmpEuler.z + this.sway.y * 0.25 * rotSway,
     )
 
     // Shift rig so holo center sits on group origin → crosshair when ADS_POS is (0,0,z).

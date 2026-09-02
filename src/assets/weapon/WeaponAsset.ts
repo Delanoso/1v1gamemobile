@@ -186,7 +186,7 @@ export const VIEWMODEL_HIP = {
 
 /** ADS pose — optic at crosshair; holo offset handled on model. */
 export const VIEWMODEL_ADS = {
-  position: new THREE.Vector3(0, 0.024, -0.12),
+  position: new THREE.Vector3(0.03, 0.018, -0.13),
   rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
 }
 
@@ -206,10 +206,17 @@ function collectSightMeshes(rig: THREE.Object3D): THREE.Mesh[] {
   return holo.length > 0 ? holo : glass
 }
 
-/** Red-dot glass center in rig local space. */
+/** Red-dot aim point in rig local space (glass lens preferred). */
 export function getSightLocalAimPoint(rig: THREE.Object3D, out: THREE.Vector3): boolean {
   rig.updateMatrixWorld(true)
-  const meshes = collectSightMeshes(rig)
+  const glass: THREE.Mesh[] = []
+  const holo: THREE.Mesh[] = []
+  rig.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return
+    if (meshUsesMaterial(o, ['glass'])) glass.push(o)
+    else if (meshUsesMaterial(o, ['holo'])) holo.push(o)
+  })
+  const meshes = glass.length > 0 ? glass : holo
   if (meshes.length === 0) return false
 
   const box = new THREE.Box3()
