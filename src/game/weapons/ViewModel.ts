@@ -1,11 +1,27 @@
 import * as THREE from 'three'
 import { GAME } from '../../config/gameConfig'
-import { buildViewModelGroup, isViewmodelVisible, preloadM4ViewModel } from '../../assets/weapon/WeaponAsset'
+import {
+  VIEWMODEL_HIP,
+  buildViewModelGroup,
+  isViewmodelVisibleAtHip,
+  preloadM4ViewModel,
+} from '../../assets/weapon/WeaponAsset'
 
-const HIP_POS = new THREE.Vector3(0.26, -0.23, -0.04)
-const ADS_POS = new THREE.Vector3(0.0, -0.08, -0.1)
-const HIP_ROT = new THREE.Euler(0.04, 0.08, 0, 'YXZ')
-const ADS_ROT = new THREE.Euler(0.02, 0.0, 0, 'YXZ')
+const HIP_POS = VIEWMODEL_HIP.position
+const HIP_ROT = VIEWMODEL_HIP.rotation
+const ADS_POS = new THREE.Vector3(0.0, -0.09, -0.12)
+const ADS_ROT = new THREE.Euler(0.01, 0.0, 0, 'YXZ')
+const GLB_LOAD_TIMEOUT_MS = 8000
+
+function disposeModel(root: THREE.Object3D): void {
+  root.traverse((o) => {
+    if (o instanceof THREE.Mesh) {
+      o.geometry?.dispose()
+      const mats = Array.isArray(o.material) ? o.material : [o.material]
+      for (const mat of mats) mat.dispose()
+    }
+  })
+}
 
 /** First-person weapon mesh with recoil animation. */
 export class WeaponViewModel {
@@ -21,22 +37,44 @@ export class WeaponViewModel {
     this.group.rotation.order = 'YXZ'
     this.model = buildViewModelGroup('m4a1')
     this.group.add(this.model)
+    // Hide blocky procedural placeholder until GLB is ready (or load times out).
+    this.group.visible = false
     void this.loadM4Tan()
   }
 
+  private replaceModel(next: THREE.Group): void {
+    this.group.remove(this.model)
+    disposeModel(this.model)
+    this.model = next
+    this.group.add(this.model)
+  }
+
   private async loadM4Tan(): Promise<void> {
+    let revealed = false
+    const reveal = (glb?: THREE.Group) => {
+      if (glb) this.replaceModel(glb)
+      this.group.visible = true
+      revealed = true
+    }
+
+    const timer = window.setTimeout(() => {
+      if (!revealed) reveal()
+    }, GLB_LOAD_TIMEOUT_MS)
+
     try {
       const glbModel = await preloadM4ViewModel()
-      if (!isViewmodelVisible(glbModel)) {
-        console.warn('M4 Tan viewmodel bbox invalid, keeping procedural fallback')
+      window.clearTimeout(timer)
+      if (isViewmodelVisibleAtHip(glbModel)) {
+        reveal(glbModel)
         return
       }
-      this.group.remove(this.model)
-      this.model = glbModel
-      this.group.add(this.model)
+      console.warn('M4 Tan viewmodel failed hip-pose validation, keeping procedural fallback')
     } catch (err) {
+      window.clearTimeout(timer)
       console.warn('M4 Tan viewmodel unavailable, using procedural fallback', err)
     }
+
+    if (!revealed) reveal()
   }
 
   onFire(): void {
