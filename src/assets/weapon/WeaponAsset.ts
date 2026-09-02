@@ -5,6 +5,7 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { buildCodGhostsWeapon, COD_WEAPON_BY_VARIANT } from './CodGhostsWeaponPack'
+import { buildImportedWeapon } from './ImportedWeaponPack'
 import { barrelZ, boxW, ringZ } from './WeaponGeometry'
 import { buildShotgunMeshes } from './ShotgunAsset'
 import {
@@ -175,7 +176,38 @@ export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Grou
   return vm
 }
 
+/** Lay a horizontal imported weapon along camera forward (-Z) for first-person view. */
+export function orientImportedViewModel(source: THREE.Group): THREE.Group {
+  const vm = source.clone(true)
+  vm.rotation.order = 'YXZ'
+  vm.rotation.set(-Math.PI / 2, Math.PI / 2, 0)
+  vm.updateMatrixWorld(true)
+
+  const box = new THREE.Box3().setFromObject(vm)
+  const size = box.getSize(new THREE.Vector3())
+  const targetLength = 0.42
+  const length = Math.max(size.x, size.y, size.z)
+  vm.scale.setScalar(targetLength / Math.max(length, 0.01))
+  vm.rotation.x += 0.02
+  vm.position.set(0.14, -0.15, -0.08)
+  return vm
+}
+
+export async function buildImportedViewModel(): Promise<THREE.Group> {
+  const { group } = await buildImportedWeapon('m4-tan')
+  return orientImportedViewModel(group)
+}
+
 export async function buildWeapon(variant: WeaponVariant = 'm4a1'): Promise<WeaponBuildResult> {
+  if (variant === 'm4a1') {
+    try {
+      const imported = await buildImportedWeapon('m4-tan')
+      return { group: imported.group, source: 'glb', triangleCount: imported.triangleCount }
+    } catch {
+      /* fall through to COD pack / procedural */
+    }
+  }
+
   try {
     const cod = await buildCodGhostsWeapon(COD_WEAPON_BY_VARIANT[variant])
     const group = new THREE.Group()

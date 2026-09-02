@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { GAME } from '../config/gameConfig'
 import { audio } from '../audio/AudioManager'
 import { InputManager } from './input/InputManager'
@@ -14,6 +15,7 @@ import { createSkyDome } from './effects/SkyDome'
 import { RainEffect } from './effects/RainEffect'
 import { HUD } from '../ui/HUD'
 import { MainMenu, type MenuAction } from '../ui/MainMenu'
+import { buildFederationOperator } from '../assets/operator/OperatorAsset'
 
 type Phase = 'menu' | 'play'
 
@@ -46,6 +48,7 @@ export class Game {
   private spawnPoint = new THREE.Vector3(0, 0, 3)
   private spawnYaw = 0
   private reloadWasActive = false
+  private operator: THREE.Group | null = null
 
   constructor(host: HTMLElement) {
     this.host = host
@@ -69,6 +72,10 @@ export class Game {
     this.renderer.toneMappingExposure = 1.3
     this.host.prepend(this.renderer.domElement)
 
+    const pmrem = new THREE.PMREMGenerator(this.renderer)
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+    pmrem.dispose()
+
     this.scene.background = new THREE.Color(0xb8c8d8)
     this.scene.fog = new THREE.FogExp2(0xb8c8d8, 0.016)
     this.scene.add(this.tracerGroup)
@@ -76,6 +83,11 @@ export class Game {
     this.muzzle = createMuzzleFlash()
     this.player.camera.add(this.muzzle)
     this.muzzle.position.set(0.18, -0.14, -0.45)
+
+    const weaponLight = new THREE.PointLight(0xfff4e8, 1.4, 2.5)
+    weaponLight.position.set(0.15, 0.05, -0.15)
+    this.player.camera.add(weaponLight)
+
     this.player.camera.add(this.viewModel.group)
     this.scene.add(this.player.camera)
 
@@ -133,6 +145,26 @@ export class Game {
       window.innerWidth,
       window.innerHeight,
     )
+
+    void this.loadOperator()
+  }
+
+  private async loadOperator(): Promise<void> {
+    try {
+      const { group } = await buildFederationOperator()
+      group.position.copy(this.spawnPoint)
+      group.rotation.y = this.spawnYaw
+
+      const key = new THREE.PointLight(0xfff0e0, 2.2, 6)
+      key.position.set(0, 2.2, 1.2)
+      group.add(key)
+
+      group.visible = this.phase === 'menu'
+      this.scene.add(group)
+      this.operator = group
+    } catch (err) {
+      console.warn('Federation operator unavailable', err)
+    }
   }
 
   private handleMenu(action: MenuAction): void {
@@ -145,6 +177,7 @@ export class Game {
 
   private enterPlay(): void {
     this.phase = 'play'
+    if (this.operator) this.operator.visible = false
     this.menu.setVisible(false)
     this.hud.setVisible(true)
     this.touch.setVisible(true)
@@ -184,8 +217,9 @@ export class Game {
       this.post?.render()
     } else {
       const t = this.clock.elapsedTime
-      this.menuCam.position.set(Math.sin(t * 0.1) * 22, 8.5, Math.cos(t * 0.1) * 22)
-      this.menuCam.lookAt(0, 2, 0)
+      const orbit = 14
+      this.menuCam.position.set(Math.sin(t * 0.1) * orbit, 5.2, Math.cos(t * 0.1) * orbit + 4)
+      this.menuCam.lookAt(0, 1.35, 0)
       this.renderer.render(this.scene, this.menuCam)
     }
   }
