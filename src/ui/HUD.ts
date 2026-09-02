@@ -6,6 +6,7 @@ export class HUD {
   private ammoEl: HTMLElement
   private feedEl: HTMLElement
   private crosshair: HTMLElement
+  private scopeOverlay: HTMLElement
   private hitmarker: HTMLElement
   private modeEl: HTMLElement
   private sprintEl: HTMLElement
@@ -21,6 +22,13 @@ export class HUD {
       <div class="sprint-tag" id="sprint-tag">SPRINT</div>
       <div class="crosshair" id="crosshair">
         <span class="ch h"></span><span class="ch v"></span>
+      </div>
+      <div class="scope-overlay" id="scope-overlay" aria-hidden="true">
+        <div class="scope-vignette"></div>
+        <div class="scope-frame">
+          <div class="scope-lens"></div>
+          <div class="scope-dot"></div>
+        </div>
       </div>
       <div class="hitmarker" id="hitmarker"></div>
       <div class="kill-feed" id="kill-feed"></div>
@@ -39,6 +47,7 @@ export class HUD {
     this.ammoEl = this.root.querySelector('#ammo')!
     this.feedEl = this.root.querySelector('#kill-feed')!
     this.crosshair = this.root.querySelector('#crosshair')!
+    this.scopeOverlay = this.root.querySelector('#scope-overlay')!
     this.hitmarker = this.root.querySelector('#hitmarker')!
     this.modeEl = this.root.querySelector('#hud-mode')!
     this.sprintEl = this.root.querySelector('#sprint-tag')!
@@ -66,8 +75,12 @@ export class HUD {
     this.sprintEl.classList.toggle('show', sprinting)
   }
 
-  setAds(ads: boolean): void {
-    this.crosshair.classList.toggle('ads', ads)
+  setAds(ads: boolean, blend = ads ? 1 : 0): void {
+    const amount = ads ? Math.max(blend, 0.35) : blend
+    this.crosshair.classList.toggle('ads', amount > 0.5)
+    this.scopeOverlay.classList.toggle('active', amount > 0.08)
+    this.scopeOverlay.style.opacity = String(Math.min(1, amount))
+    this.scopeOverlay.setAttribute('aria-hidden', amount > 0.08 ? 'false' : 'true')
   }
 
   flashHitmarker(killed = false): void {

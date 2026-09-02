@@ -275,7 +275,7 @@ export class Game {
 
     for (const t of this.targets) t.update(dt)
 
-    this.hud.setAds(ads)
+    this.hud.setAds(ads, this.viewModel.adsAmount)
     this.hud.setAmmo(this.weapon.ammo, this.weapon.reserve, this.weapon.reloading)
     this.hud.setHealth(this.player.health)
     this.hud.setSprinting(sprinting && this.player.moveSpeed > GAME.player.walkSpeed)

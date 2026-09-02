@@ -33,7 +33,7 @@ export const GAME = {
     recoilPitch: 0.011,
     recoilYaw: 0.0038,
     recoilRecovery: 11,
-    adsFov: 56,
+    adsFov: 50,
     hipFov: 74,
     adsInSpeed: 14,
     adsOutSpeed: 10,

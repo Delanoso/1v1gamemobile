@@ -46,6 +46,10 @@ export class WeaponViewModel {
     void this.loadM4Tan()
   }
 
+  get adsAmount(): number {
+    return this.adsBlend
+  }
+
   private replaceModel(next: THREE.Group): void {
     this.group.remove(this.model)
     disposeModel(this.model)
@@ -89,13 +93,18 @@ export class WeaponViewModel {
   update(dt: number, ads: boolean, moveSpeed: number, lookDelta: THREE.Vector2): void {
     this.kick = Math.max(0, this.kick - dt * GAME.weapon.viewmodelRecovery * 0.01)
 
-    this.sway.x = THREE.MathUtils.lerp(this.sway.x, -lookDelta.x * 0.4, 1 - Math.exp(-dt * 12))
-    this.sway.y = THREE.MathUtils.lerp(this.sway.y, lookDelta.y * 0.35, 1 - Math.exp(-dt * 12))
-
-    const bob = moveSpeed > 0.2 ? Math.sin(performance.now() * 0.012) * (moveSpeed > 5 ? 0.012 : 0.008) : 0
-
     const targetAds = ads ? 1 : 0
     this.adsBlend = THREE.MathUtils.lerp(this.adsBlend, targetAds, 1 - Math.exp(-dt * 14))
+
+    const swayScale = 1 - this.adsBlend * 0.88
+    const kickScale = 1 - this.adsBlend * 0.65
+
+    this.sway.x = THREE.MathUtils.lerp(this.sway.x, -lookDelta.x * 0.4 * swayScale, 1 - Math.exp(-dt * 12))
+    this.sway.y = THREE.MathUtils.lerp(this.sway.y, lookDelta.y * 0.35 * swayScale, 1 - Math.exp(-dt * 12))
+
+    const bob = moveSpeed > 0.2
+      ? Math.sin(performance.now() * 0.012) * (moveSpeed > 5 ? 0.012 : 0.008) * (1 - this.adsBlend * 0.9)
+      : 0
 
     this.tmpPos.lerpVectors(HIP_POS, ADS_POS, this.adsBlend)
     this.tmpEuler.x = THREE.MathUtils.lerp(HIP_ROT.x, ADS_ROT.x, this.adsBlend)
@@ -105,16 +114,16 @@ export class WeaponViewModel {
     this.group.position.set(
       this.tmpPos.x + this.sway.x,
       this.tmpPos.y + this.sway.y + bob,
-      this.tmpPos.z - this.kick * 0.2,
+      this.tmpPos.z - this.kick * 0.2 * kickScale,
     )
     this.group.rotation.set(
-      this.tmpEuler.x + this.kick,
-      this.tmpEuler.y + this.sway.x * 0.35,
-      this.tmpEuler.z + this.sway.y * 0.25,
+      this.tmpEuler.x + this.kick * kickScale,
+      this.tmpEuler.y + this.sway.x * 0.35 * swayScale,
+      this.tmpEuler.z + this.sway.y * 0.25 * swayScale,
     )
 
     this.tmpModelPos.copy(this.adsAimOffset).multiplyScalar(this.adsBlend)
-    this.tmpModelPos.z -= this.kick * 0.05
+    this.tmpModelPos.z -= this.kick * 0.05 * kickScale
     this.model.position.copy(this.tmpModelPos)
   }
 }

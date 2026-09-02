@@ -184,21 +184,43 @@ export const VIEWMODEL_HIP = {
   rotation: new THREE.Euler(0.11, 0.18, -0.03, 'YXZ'),
 }
 
-/** ADS pose — keep yaw (don't zero out) so stock doesn't swing vertical. */
+/** ADS pose — barrel level with camera forward, optic at crosshair. */
 export const VIEWMODEL_ADS = {
-  position: new THREE.Vector3(0, -0.02, -0.10),
-  rotation: new THREE.Euler(0.05, 0.14, -0.02, 'YXZ'),
+  position: new THREE.Vector3(0, 0, -0.12),
+  rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
 }
 
-/** Shift model so optic (upper-forward on rail) aligns with group origin for ADS. */
+function meshUsesMaterial(mesh: THREE.Mesh, names: string[]): boolean {
+  const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+  return mats.some((mat) => names.includes(mat.name))
+}
+
+/** Shift model so holo / red-dot glass aligns with group origin for ADS. */
 export function computeAdsAimOffset(rig: THREE.Object3D): THREE.Vector3 {
   rig.updateMatrixWorld(true)
+
+  const sightMeshes: THREE.Mesh[] = []
+  rig.traverse((o) => {
+    if (o instanceof THREE.Mesh && meshUsesMaterial(o, ['holo', 'glass', 'ironsight'])) {
+      sightMeshes.push(o)
+    }
+  })
+
+  const aim = new THREE.Vector3()
+  if (sightMeshes.length > 0) {
+    const box = new THREE.Box3()
+    for (const mesh of sightMeshes) box.expandByObject(mesh)
+    box.getCenter(aim)
+    rig.worldToLocal(aim)
+    return aim.multiplyScalar(-1)
+  }
+
   const box = new THREE.Box3().setFromObject(rig)
   const size = box.getSize(new THREE.Vector3())
-  const aim = new THREE.Vector3(
+  aim.set(
     (box.min.x + box.max.x) * 0.5,
-    box.min.y + size.y * 0.78,
-    box.min.z + size.z * 0.30,
+    box.min.y + size.y * 0.86,
+    box.min.z + size.z * 0.24,
   )
   return aim.multiplyScalar(-1)
 }
