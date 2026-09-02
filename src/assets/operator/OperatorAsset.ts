@@ -3,11 +3,12 @@ import { loadGlbModel, type GlbBuildResult } from '../glb/GlbModelLoader'
 
 export const FEDERATION_OPERATOR_GLB = '/assets/weapons/federation.glb'
 
-/** Hide parts that clip the camera or aren't visible in FPS. */
-const FPS_HIDDEN_MATERIAL = /head|headgear|eye|lense|boot|lowerbody/i
-
-/** Torso / arms / gloves / vest pieces kept for first-person body. */
-const FPS_VISIBLE_MATERIAL = /glove|upperbody|loadout|utility|alpha_a_alt/i
+/**
+ * FPS: gloves/hands only — the body stays off-screen (classic MW arms view).
+ * A full upperbody T-pose cannot sit behind the lens and still reach the gun.
+ */
+const FPS_HIDDEN_MATERIAL = /head|headgear|eye|lense|boot|lowerbody|loadout|utility|alpha|upperbody/i
+const FPS_VISIBLE_MATERIAL = /glove/i
 
 let federationTemplate: Promise<THREE.Group> | null = null
 
@@ -23,7 +24,25 @@ function shouldShowFpsMesh(mesh: THREE.Mesh): boolean {
   return false
 }
 
-function prepareFpsOperatorBody(root: THREE.Object3D): void {
+/** Shift the inner model so visible gloves sit on the group origin. */
+function recenterVisibleContent(root: THREE.Group): void {
+  root.updateMatrixWorld(true)
+  const box = new THREE.Box3()
+  root.traverse((o) => {
+    if (o instanceof THREE.Mesh && o.visible) box.expandByObject(o)
+  })
+  if (box.isEmpty()) return
+
+  const center = box.getCenter(new THREE.Vector3())
+  root.worldToLocal(center)
+
+  const inner = root.children[0]
+  if (inner) inner.position.sub(center)
+  else root.position.sub(center)
+  root.updateMatrixWorld(true)
+}
+
+function prepareFpsOperatorBody(root: THREE.Group): void {
   root.traverse((o) => {
     if (!(o instanceof THREE.Mesh)) return
     const show = shouldShowFpsMesh(o)
@@ -32,27 +51,45 @@ function prepareFpsOperatorBody(root: THREE.Object3D): void {
     o.castShadow = false
     o.receiveShadow = false
     o.frustumCulled = false
-    o.renderOrder = 0
+    o.renderOrder = 1
+
+    const mats = Array.isArray(o.material) ? o.material : [o.material]
+    for (const mat of mats) {
+      if (!mat || Array.isArray(mat)) continue
+      if ('metalness' in mat) {
+        const std = mat as THREE.MeshStandardMaterial
+        std.envMapIntensity = 0.45
+        std.metalness = Math.min(std.metalness, 0.4)
+        std.roughness = Math.max(std.roughness, 0.5)
+      }
+      mat.needsUpdate = true
+    }
   })
+
+  recenterVisibleContent(root)
+  // Character-space gloves are huge; shrink to viewmodel hand size.
+  root.scale.setScalar(0.38)
 }
 
 /**
- * FPS body pose — chest and arms sit behind the viewmodel weapon.
- * Camera looks down -Z; weapon is near z≈0, torso is further forward (more negative z).
+ * Hands near the M4 grips — torso/vest never drawn.
+ * Fine-tune via /tune.html → OPERATOR (OP HIP / OP ADS).
  */
 export const FPS_OPERATOR_HIP = {
-  position: new THREE.Vector3(0, -1.02, -0.42),
-  rotation: new THREE.Euler(-0.08, 0, 0, 'YXZ'),
+  position: new THREE.Vector3(0.2, -0.34, -0.1),
+  rotation: new THREE.Euler(0.85, 0.25, -0.55, 'YXZ'),
 }
 
-/** ADS operator offset — tune via /operator-tune.html */
 export const FPS_OPERATOR_ADS = {
-  position: new THREE.Vector3(0, -1.02, -0.42),
-  rotation: new THREE.Euler(-0.08, 0, 0, 'YXZ'),
+  position: new THREE.Vector3(0.1, -0.28, -0.16),
+  rotation: new THREE.Euler(0.95, 0.12, -0.35, 'YXZ'),
 }
 
 /** @deprecated Use FPS_OPERATOR_HIP */
 export const FPS_OPERATOR_HOLD = FPS_OPERATOR_HIP
+
+/** Kept for call-site compatibility. */
+export function updateFpsOperatorClipPlanes(_camera: THREE.Camera): void {}
 
 async function loadFederationTemplate(): Promise<THREE.Group> {
   const { group } = await loadGlbModel(FEDERATION_OPERATOR_GLB, 'character')
@@ -61,12 +98,17 @@ async function loadFederationTemplate(): Promise<THREE.Group> {
   return group
 }
 
-/** Cached Federation operator rig for FPS (torso/arms only). */
 export function preloadFpsOperatorBody(): Promise<THREE.Group> {
   if (!federationTemplate) {
     federationTemplate = loadFederationTemplate()
   }
-  return federationTemplate.then((rig) => rig.clone(true))
+  return federationTemplate.then((rig) => {
+    // Clear cached template pose leftovers — clone starts identity; hold pose is on parent group.
+    const clone = rig.clone(true)
+    clone.position.set(0, 0, 0)
+    clone.rotation.set(0, 0, 0)
+    return clone
+  })
 }
 
 export async function buildFederationOperator(): Promise<GlbBuildResult> {

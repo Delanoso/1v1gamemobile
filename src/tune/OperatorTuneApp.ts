@@ -5,6 +5,7 @@ import {
   FPS_OPERATOR_ADS,
   FPS_OPERATOR_HIP,
   preloadFpsOperatorBody,
+  updateFpsOperatorClipPlanes,
 } from '../assets/operator/OperatorAsset'
 import {
   VIEWMODEL_ADS,
@@ -27,7 +28,7 @@ interface Pose {
   rotation: THREE.Euler
 }
 
-const OPERATOR_STORAGE_KEY = 'frontline-operator-tune-v1'
+const OPERATOR_STORAGE_KEY = 'frontline-operator-tune-v8'
 const WEAPON_POSE_STORAGE_KEY = 'frontline-vm-tune-v1'
 const DRAG_SENS = 0.00085
 
@@ -129,6 +130,7 @@ export class OperatorTuneApp {
     this.weaponAds = savedWeapon?.ads ?? clonePose(VIEWMODEL_ADS)
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
+    this.renderer.localClippingEnabled = true
     this.renderer.setPixelRatio(getRendererPixelRatio())
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     host.appendChild(this.renderer.domElement)
@@ -224,6 +226,7 @@ export class OperatorTuneApp {
 
     const loop = () => {
       requestAnimationFrame(loop)
+      updateFpsOperatorClipPlanes(this.camera)
       this.renderer.render(this.scene, this.camera)
     }
     loop()

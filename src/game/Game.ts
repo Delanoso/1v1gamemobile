@@ -16,7 +16,7 @@ import { createSkyDome } from './effects/SkyDome'
 import { RainEffect } from './effects/RainEffect'
 import { HUD } from '../ui/HUD'
 import { MainMenu, type MenuAction } from '../ui/MainMenu'
-import { buildFederationOperator, preloadFpsOperatorBody } from '../assets/operator/OperatorAsset'
+import { buildFederationOperator, preloadFpsOperatorBody, updateFpsOperatorClipPlanes } from '../assets/operator/OperatorAsset'
 import {
   getRendererPixelRatio,
   shouldLoadMenuOperator,
@@ -71,6 +71,7 @@ export class Game {
       antialias: usePostProcessing(),
       powerPreference: usePostProcessing() ? 'high-performance' : 'default',
     })
+    this.renderer.localClippingEnabled = true
     this.renderer.setPixelRatio(getRendererPixelRatio())
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     this.renderer.shadowMap.enabled = useShadows()
@@ -291,6 +292,7 @@ export class Game {
       new THREE.Vector2(this.player.lookDeltaScratch.x, this.player.lookDeltaScratch.y),
       this.viewModel.viewKick,
     )
+    updateFpsOperatorClipPlanes(this.player.camera)
 
     if (this.rain) {
       this.rain.group.position.set(this.player.position.x, 0, this.player.position.z)

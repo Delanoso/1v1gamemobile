@@ -5,6 +5,7 @@ import {
   FPS_OPERATOR_ADS,
   FPS_OPERATOR_HIP,
   preloadFpsOperatorBody,
+  updateFpsOperatorClipPlanes,
 } from '../assets/operator/OperatorAsset'
 import {
   VIEWMODEL_ADS,
@@ -32,7 +33,7 @@ interface Pose {
 }
 
 const POSE_STORAGE_KEY = 'frontline-vm-tune-v1'
-const OPERATOR_STORAGE_KEY = 'frontline-operator-tune-v1'
+const OPERATOR_STORAGE_KEY = 'frontline-operator-tune-v8'
 const DRAG_SENS = 0.00055
 const OPERATOR_DRAG_SENS = 0.00085
 
@@ -185,6 +186,7 @@ export class ViewmodelTuneApp {
     this.scope = getScopeOverlaySettings()
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
+    this.renderer.localClippingEnabled = true
     this.renderer.setPixelRatio(getRendererPixelRatio())
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     host.appendChild(this.renderer.domElement)
@@ -304,6 +306,7 @@ export class ViewmodelTuneApp {
 
     const loop = () => {
       requestAnimationFrame(loop)
+      updateFpsOperatorClipPlanes(this.camera)
       this.renderer.render(this.scene, this.camera)
     }
     loop()
@@ -344,8 +347,8 @@ export class ViewmodelTuneApp {
     } else if (this.mode === 'operator') {
       hint.textContent =
         this.operatorSubMode === 'ads'
-          ? 'OPERATOR ADS — gun fixed at in-game ADS pose. Drag the body behind the weapon.'
-          : 'OPERATOR HIP — gun fixed at in-game hip pose. Drag the body behind the weapon.'
+          ? 'OPERATOR ADS — hands only (body off-screen). Gun fixed at ADS; drag hands onto the grips.'
+          : 'OPERATOR HIP — hands only (body off-screen). Gun fixed at hip; drag hands onto the grips.'
       this.camera.fov = this.operatorSubMode === 'ads' ? this.scope.adsFov : GAME.weapon.hipFov
       this.copyBtn.textContent = 'Copy operator'
       this.resetBtn.textContent = 'Reset operator'
@@ -411,11 +414,11 @@ export class ViewmodelTuneApp {
     const axes = operator
       ? ([
           { key: 'px', label: 'Pos X', min: -0.6, max: 0.6, step: 0.001, pose: 'position', axis: 'x' },
-          { key: 'py', label: 'Pos Y', min: -2.2, max: 0.6, step: 0.001, pose: 'position', axis: 'y' },
-          { key: 'pz', label: 'Pos Z', min: -1.2, max: 0.4, step: 0.001, pose: 'position', axis: 'z' },
-          { key: 'rx', label: 'Rot X', min: -0.8, max: 0.8, step: 0.001, pose: 'rotation', axis: 'x' },
+          { key: 'py', label: 'Pos Y', min: -0.8, max: 0.4, step: 0.001, pose: 'position', axis: 'y' },
+          { key: 'pz', label: 'Pos Z', min: -0.6, max: 0.4, step: 0.001, pose: 'position', axis: 'z' },
+          { key: 'rx', label: 'Rot X', min: -1.2, max: 1.2, step: 0.001, pose: 'rotation', axis: 'x' },
           { key: 'ry', label: 'Rot Y', min: -3.14, max: 3.14, step: 0.001, pose: 'rotation', axis: 'y' },
-          { key: 'rz', label: 'Rot Z', min: -0.8, max: 0.8, step: 0.001, pose: 'rotation', axis: 'z' },
+          { key: 'rz', label: 'Rot Z', min: -1.2, max: 1.2, step: 0.001, pose: 'rotation', axis: 'z' },
         ] as const)
       : ([
           { key: 'px', label: 'Pos X', min: -0.35, max: 0.35, step: 0.001, pose: 'position', axis: 'x' },
