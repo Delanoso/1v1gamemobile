@@ -113,7 +113,7 @@ export async function getCodWeaponCount(): Promise<number> {
 
 export async function loadCodWeaponPack(): Promise<THREE.Group[]> {
   const clusters = await loadClusters()
-  return clusters.map((cluster, index) => {
+  return clusters.map((cluster) => {
     const group = cluster.clone(true)
     return normalizeWeaponGroup(group, 'cod-pack')
   })
