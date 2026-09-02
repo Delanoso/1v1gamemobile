@@ -186,8 +186,8 @@ export const VIEWMODEL_HIP = {
 
 /** ADS pose — optic at crosshair; holo offset handled on model. */
 export const VIEWMODEL_ADS = {
-  position: new THREE.Vector3(-0.002, -0.013, -0.071),
-  rotation: new THREE.Euler(0.104, 0.048, -0.248, 'YXZ'),
+  position: new THREE.Vector3(-0.002, -0.013, -0.08),
+  rotation: new THREE.Euler(0.104, 0, -0.256, 'YXZ'),
 }
 
 function meshUsesMaterial(mesh: THREE.Mesh, names: string[]): boolean {
@@ -376,7 +376,7 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
   return buildFpsViewmodelRig(gun)
 }
 
-const VIEWMODEL_CACHE_VERSION = 15
+const VIEWMODEL_CACHE_VERSION = 16
 let m4ViewModelCache: Promise<THREE.Group> | null = null
 let m4ViewModelCacheVersion = 0
 

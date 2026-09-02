@@ -24,12 +24,12 @@ export interface ScopeOverlaySettings {
 }
 
 export const DEFAULT_SCOPE_OVERLAY: ScopeOverlaySettings = {
-  adsFov: 50,
+  adsFov: 32,
   scopeShape: 'square',
-  frameWidthPx: 158,
-  frameHeightPx: 158,
+  frameWidthPx: 235,
+  frameHeightPx: 188,
   frameBorderPx: 0,
-  frameRadiusPx: 0,
+  frameRadiusPx: 41,
   lensInsetPx: 0,
   dotSizePx: 7,
   dotOffsetX: 0,
