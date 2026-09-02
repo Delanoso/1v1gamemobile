@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { normalizeWeaponGroup } from '../glb/GlbModelLoader'
 
 export const COD_GHOSTS_WEAPONS_GLB = '/assets/weapons/call_of_duty_ghost_-_weapons.glb'
 
@@ -56,68 +57,6 @@ function extractMesh(mesh: THREE.Mesh): THREE.Mesh {
   baked.castShadow = true
   baked.receiveShadow = true
   return baked
-}
-
-function seatOnGround(group: THREE.Group): void {
-  group.position.set(0, 0, 0)
-  group.updateMatrixWorld(true)
-
-  let box = new THREE.Box3().setFromObject(group)
-  const center = box.getCenter(new THREE.Vector3())
-  // Pivot on the floor at XZ center — keeps guns on the turntable when rotated.
-  group.position.x -= center.x
-  group.position.z -= center.z
-  group.updateMatrixWorld(true)
-  box = new THREE.Box3().setFromObject(group)
-  group.position.y -= box.min.y
-}
-
-/** Try a few 90° rotations so barrel length is horizontal and Y is the thin axis. */
-function pickFlatRotation(group: THREE.Group): void {
-  const candidates = [
-    new THREE.Euler(0, 0, Math.PI / 2),
-    new THREE.Euler(0, 0, -Math.PI / 2),
-    new THREE.Euler(-Math.PI / 2, 0, 0),
-    new THREE.Euler(Math.PI / 2, 0, 0),
-    new THREE.Euler(0, 0, 0),
-  ]
-
-  let best = candidates[0]
-  let bestScore = -Infinity
-
-  for (const euler of candidates) {
-    group.rotation.copy(euler)
-    group.updateMatrixWorld(true)
-    const box = new THREE.Box3().setFromObject(group)
-    const size = box.getSize(new THREE.Vector3())
-    const dims = [size.x, size.y, size.z]
-    const minDim = Math.min(...dims)
-    const maxDim = Math.max(...dims)
-    const yIsThinnest = size.y <= minDim * 1.05 ? 12 : size.y >= maxDim * 0.95 ? -12 : 0
-    const aspect = maxDim / Math.max(minDim, 0.001)
-    const score = yIsThinnest + aspect
-    if (score > bestScore) {
-      bestScore = score
-      best = euler
-    }
-  }
-
-  group.rotation.copy(best)
-}
-
-function normalizeWeaponGroup(group: THREE.Group): THREE.Group {
-  group.position.set(0, 0, 0)
-  group.rotation.set(0, 0, 0)
-  group.scale.set(1, 1, 1)
-  group.updateMatrixWorld(true)
-
-  const box = new THREE.Box3().setFromObject(group)
-  const size = box.getSize(new THREE.Vector3())
-  const scale = 1 / Math.max(size.x, size.y, size.z, 0.01)
-  group.scale.setScalar(scale)
-  pickFlatRotation(group)
-  seatOnGround(group)
-  return group
 }
 
 function buildMeshClusters(scene: THREE.Object3D): THREE.Group[] {

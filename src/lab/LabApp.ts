@@ -9,9 +9,13 @@ import { buildCrate, type CrateVariant } from '../assets/crate/CrateAsset'
 import { buildPallet, type PalletVariant } from '../assets/pallet/PalletAsset'
 import { buildWeapon, type WeaponVariant } from '../assets/weapon/WeaponAsset'
 import { buildCodGhostsWeapon, COD_GHOSTS_WEAPONS_GLB, COD_WEAPON_LABELS } from '../assets/weapon/CodGhostsWeaponPack'
+import { buildImportedWeapon, IMPORTED_WEAPONS, type ImportedWeaponId } from '../assets/weapon/ImportedWeaponPack'
+import { buildFederationOperator, FEDERATION_OPERATOR_GLB } from '../assets/operator/OperatorAsset'
 import type { ContainerColor } from '../game/materials/MapMaterials'
 
-export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate' | 'pallet' | 'weapon'
+export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate' | 'pallet' | 'weapon' | 'operator'
+
+type WeaponPickerId = `imported:${ImportedWeaponId}` | `cod:${number}`
 
 const ASSET_LABELS: Record<LabAsset, string> = {
   container: 'Shipping Container',
@@ -21,6 +25,7 @@ const ASSET_LABELS: Record<LabAsset, string> = {
   crate: 'Crate',
   pallet: 'Pallet',
   weapon: 'Weapon',
+  operator: 'Operator',
 }
 
 const GLB_HINTS: Partial<Record<LabAsset, string>> = {
@@ -33,7 +38,8 @@ const GLB_HINTS: Partial<Record<LabAsset, string>> = {
     'public/assets/maps/container-yard/crate-small.glb · crate-medium.glb · crate-large.glb · crate-long.glb · crate-flat.glb',
   pallet:
     'public/assets/maps/container-yard/pallet-standard.glb · pallet-double.glb · pallet-plastic.glb',
-  weapon: 'public/assets/weapons/call_of_duty_ghost_-_weapons.glb (COD Ghosts pack — 11 guns)',
+  weapon: 'public/assets/weapons/ — M4 · Fennec · Kimber · Renetti · COD Ghosts pack',
+  operator: 'public/assets/weapons/federation.glb',
 }
 
 export class LabApp {
@@ -49,7 +55,7 @@ export class LabApp {
   private crateVariant: CrateVariant = 'medium'
   private palletVariant: PalletVariant = 'standard'
   private weaponVariant: WeaponVariant = 'shotgun'
-  private codWeaponIndex = 6
+  private weaponPicker: WeaponPickerId = 'imported:m4-tan'
   private colorRow: HTMLElement | null = null
   private clock = new THREE.Clock()
 
@@ -231,13 +237,28 @@ export class LabApp {
     if (this.asset === 'weapon') {
       const row = document.createElement('div')
       row.className = 'lab-colors lab-colors-wrap lab-colors-scroll'
+      for (const weapon of IMPORTED_WEAPONS) {
+        const id = `imported:${weapon.id}` as WeaponPickerId
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = weapon.label
+        b.className = `swatch swatch-weapon-imported${id === this.weaponPicker ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.weaponPicker = id
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
+      }
       COD_WEAPON_LABELS.forEach((label, index) => {
+        const id = `cod:${index}` as WeaponPickerId
         const b = document.createElement('button')
         b.type = 'button'
         b.textContent = label
-        b.className = `swatch swatch-weapon-cod${index === this.codWeaponIndex ? ' active' : ''}`
+        b.className = `swatch swatch-weapon-cod${id === this.weaponPicker ? ' active' : ''}`
         b.addEventListener('click', () => {
-          this.codWeaponIndex = index
+          this.weaponPicker = id
           row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
           b.classList.add('active')
           void this.loadAsset()
@@ -369,22 +390,41 @@ export class LabApp {
 
     if (this.asset === 'weapon') {
       try {
-        const result = await buildCodGhostsWeapon(this.codWeaponIndex)
-        this.studio.setAsset(result.group, 'weapon')
-        this.sourceEl.textContent = 'Source: COD Ghosts GLB pack'
-        this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
-        this.statusEl.textContent = `${COD_WEAPON_LABELS[this.codWeaponIndex]} — from Call of Duty Ghosts weapon pack. Rotate and review on iPad.`
+        if (this.weaponPicker.startsWith('imported:')) {
+          const id = this.weaponPicker.slice('imported:'.length) as ImportedWeaponId
+          const weapon = IMPORTED_WEAPONS.find((w) => w.id === id)
+          const result = await buildImportedWeapon(id)
+          this.studio.setAsset(result.group, 'weapon')
+          this.sourceEl.textContent = 'Source: Imported GLB'
+          this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+          this.statusEl.textContent = `${weapon?.label ?? id} — rotate and review on iPad.`
+          this.hintEl.innerHTML = `Drag to rotate · Turntable auto-spin · File<br><code>${weapon?.path ?? ''}</code>`
+        } else {
+          const index = Number(this.weaponPicker.slice('cod:'.length))
+          const result = await buildCodGhostsWeapon(index)
+          this.studio.setAsset(result.group, 'weapon')
+          this.sourceEl.textContent = 'Source: COD Ghosts GLB pack'
+          this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+          this.statusEl.textContent = `${COD_WEAPON_LABELS[index]} — from Call of Duty Ghosts weapon pack.`
+          this.hintEl.innerHTML = `Drag to rotate · Turntable auto-spin · Pack file<br><code>${COD_GHOSTS_WEAPONS_GLB}</code>`
+        }
       } catch {
         const result = await buildWeapon(this.weaponVariant)
         this.studio.setAsset(result.group, 'weapon')
         this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
         this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
-        this.statusEl.textContent =
-          result.source === 'glb'
-            ? 'Using imported weapon GLB.'
-            : 'Procedural fallback — drop COD pack at public/assets/weapons/call_of_duty_ghost_-_weapons.glb'
+        this.statusEl.textContent = 'Procedural fallback — check GLB paths in public/assets/weapons/'
       }
-      this.hintEl.innerHTML = `Drag to rotate · Turntable auto-spin · Pack file<br><code>${COD_GHOSTS_WEAPONS_GLB}</code>`
+      return
+    }
+
+    if (this.asset === 'operator') {
+      const result = await buildFederationOperator()
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = 'Source: Federation operator GLB'
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      this.statusEl.textContent = 'Federation operator skin — check proportions, gear, and silhouette on iPad.'
+      this.hintEl.innerHTML = `Drag to rotate · Turntable auto-spin · File<br><code>${FEDERATION_OPERATOR_GLB}</code>`
     }
   }
 
