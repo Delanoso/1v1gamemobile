@@ -131,6 +131,29 @@ body,
   padding: 6px 8px;
 }
 
+.lab-weapon-pickers {
+  margin-bottom: 10px;
+}
+
+.lab-picker-label {
+  margin: 0 0 4px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a8b4c0;
+}
+
+.lab-weapon-pickers .lab-picker-label:not(:first-child) {
+  margin-top: 8px;
+}
+
+.lab-imported-weapons button,
+.lab-cod-weapons button {
+  flex: 1 1 calc(50% - 3px);
+  min-width: 0;
+  font-size: 10px;
+}
+
 .lab-colors .swatch-weapon-cod { background: #2a3238; color: #e8ecf0; }
 .lab-colors .swatch-weapon-imported { background: #4a5a48; color: #e8ecf0; }
 

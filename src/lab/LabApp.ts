@@ -235,8 +235,21 @@ export class LabApp {
     }
 
     if (this.asset === 'weapon') {
-      const row = document.createElement('div')
-      row.className = 'lab-colors lab-colors-wrap lab-colors-scroll'
+      const wrap = document.createElement('div')
+      wrap.className = 'lab-weapon-pickers'
+
+      const addSection = (title: string, className: string) => {
+        const heading = document.createElement('p')
+        heading.className = 'lab-picker-label'
+        heading.textContent = title
+        wrap.appendChild(heading)
+        const row = document.createElement('div')
+        row.className = `lab-colors lab-colors-wrap ${className}`
+        wrap.appendChild(row)
+        return row
+      }
+
+      const importedRow = addSection('MW2022 GLBs (4 files)', 'lab-imported-weapons')
       for (const weapon of IMPORTED_WEAPONS) {
         const id = `imported:${weapon.id}` as WeaponPickerId
         const b = document.createElement('button')
@@ -245,12 +258,14 @@ export class LabApp {
         b.className = `swatch swatch-weapon-imported${id === this.weaponPicker ? ' active' : ''}`
         b.addEventListener('click', () => {
           this.weaponPicker = id
-          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          wrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
           b.classList.add('active')
           void this.loadAsset()
         })
-        row.appendChild(b)
+        importedRow.appendChild(b)
       }
+
+      const codRow = addSection('COD Ghosts pack — 11 guns (yesterday)', 'lab-cod-weapons')
       COD_WEAPON_LABELS.forEach((label, index) => {
         const id = `cod:${index}` as WeaponPickerId
         const b = document.createElement('button')
@@ -259,14 +274,15 @@ export class LabApp {
         b.className = `swatch swatch-weapon-cod${id === this.weaponPicker ? ' active' : ''}`
         b.addEventListener('click', () => {
           this.weaponPicker = id
-          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          wrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
           b.classList.add('active')
           void this.loadAsset()
         })
-        row.appendChild(b)
+        codRow.appendChild(b)
       })
-      this.panel.querySelector('.lab-actions')!.before(row)
-      this.colorRow = row
+
+      this.panel.querySelector('.lab-actions')!.before(wrap)
+      this.colorRow = wrap
     }
   }
 
