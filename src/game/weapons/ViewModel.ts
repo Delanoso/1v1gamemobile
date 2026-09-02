@@ -7,6 +7,14 @@ const ADS_POS = new THREE.Vector3(0.0, -0.08, -0.1)
 const HIP_ROT = new THREE.Euler(0.04, 0.08, 0, 'YXZ')
 const ADS_ROT = new THREE.Euler(0.02, 0.0, 0, 'YXZ')
 
+function isViewmodelVisible(rig: THREE.Object3D): boolean {
+  rig.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(rig)
+  if (box.isEmpty()) return false
+  // In camera space -Z is forward; visible gun should extend into negative Z.
+  return box.min.z < -0.08 && box.max.z < 0.15
+}
+
 /** First-person weapon mesh with recoil animation. */
 export class WeaponViewModel {
   readonly group = new THREE.Group()
@@ -27,6 +35,10 @@ export class WeaponViewModel {
   private async loadM4Tan(): Promise<void> {
     try {
       const glbModel = await preloadM4ViewModel()
+      if (!isViewmodelVisible(glbModel)) {
+        console.warn('M4 Tan viewmodel bbox invalid, keeping procedural fallback')
+        return
+      }
       this.group.remove(this.model)
       this.model = glbModel
       this.usesGlbPose = true

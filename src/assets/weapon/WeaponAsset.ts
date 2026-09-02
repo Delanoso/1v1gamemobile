@@ -176,6 +176,17 @@ export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Grou
   return vm
 }
 
+/** Seat weapon rig so stock is near origin and muzzle extends into -Z (in front of camera). */
+function seatFpsViewmodelRig(mount: THREE.Group, orient: THREE.Object3D): void {
+  mount.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(mount)
+  orient.position.set(
+    -box.getCenter(new THREE.Vector3()).x,
+    -box.min.y,
+    -box.max.z,
+  )
+}
+
 /** MW2022 raw export: barrel +Z. Rig for FPS — geometry only, pose handled by ViewModel. */
 export async function buildImportedViewModel(): Promise<THREE.Group> {
   const entry = IMPORTED_WEAPONS.find((w) => w.id === 'm4-tan')
@@ -199,30 +210,25 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
   gun.position.sub(rawBox.getCenter(new THREE.Vector3()))
   gun.scale.setScalar(0.48 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.01))
 
-  const rig = new THREE.Group()
-  rig.add(gun)
-  rig.rotation.order = 'YXZ'
-  rig.rotation.set(0.06, Math.PI, -0.28)
-  rig.updateMatrixWorld(true)
+  const mount = new THREE.Group()
+  const orient = new THREE.Group()
+  orient.rotation.order = 'YXZ'
+  orient.rotation.set(0.08, Math.PI, -0.25)
+  orient.add(gun)
+  mount.add(orient)
+  seatFpsViewmodelRig(mount, orient)
 
-  let bounds = new THREE.Box3().setFromObject(rig)
-  gun.position.x -= bounds.getCenter(new THREE.Vector3()).x
-  gun.position.y -= bounds.min.y
-  gun.position.z -= bounds.max.z
-  rig.updateMatrixWorld(true)
-
-  bounds = new THREE.Box3().setFromObject(rig)
-  if (bounds.max.z > 0.01) gun.position.z -= bounds.max.z
-  rig.updateMatrixWorld(true)
-
-  return rig
+  return mount
 }
 
+const VIEWMODEL_CACHE_VERSION = 7
 let m4ViewModelCache: Promise<THREE.Group> | null = null
+let m4ViewModelCacheVersion = 0
 
 /** Start loading the M4 viewmodel early (menu screen). */
 export function preloadM4ViewModel(): Promise<THREE.Group> {
-  if (!m4ViewModelCache) {
+  if (!m4ViewModelCache || m4ViewModelCacheVersion !== VIEWMODEL_CACHE_VERSION) {
+    m4ViewModelCacheVersion = VIEWMODEL_CACHE_VERSION
     m4ViewModelCache = buildImportedViewModel()
   }
   return m4ViewModelCache.then((rig) => rig.clone(true))
