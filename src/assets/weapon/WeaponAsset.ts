@@ -180,8 +180,8 @@ export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Grou
 
 /** Hip pose used by ViewModel — exported for rig validation before GLB swap. */
 export const VIEWMODEL_HIP = {
-  position: new THREE.Vector3(0.15, -0.20, -0.08),
-  rotation: new THREE.Euler(0.06, 0.22, -0.03, 'YXZ'),
+  position: new THREE.Vector3(0.11, -0.18, -0.06),
+  rotation: new THREE.Euler(0.11, 0.18, -0.03, 'YXZ'),
 }
 
 /** ADS pose — keep yaw (don't zero out) so stock doesn't swing vertical. */
