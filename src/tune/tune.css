@@ -171,6 +171,14 @@ body,
   height: 16px;
 }
 
+.tune-shape {
+  margin-bottom: 10px;
+}
+
+.tune-shape button {
+  font-size: 10px;
+}
+
 .tune-overlay {
   position: fixed;
   inset: 0;

@@ -1,5 +1,10 @@
 /** ADS scope HUD overlay — tunable via /tune.html (SCOPE tab). */
+export type ScopeShape = 'square' | 'round'
+
 export interface ScopeOverlaySettings {
+  /** Lower = more zoom when ADS. */
+  adsFov: number
+  scopeShape: ScopeShape
   frameSizePx: number
   frameBorderPx: number
   frameRadiusPx: number
@@ -18,6 +23,8 @@ export interface ScopeOverlaySettings {
 }
 
 export const DEFAULT_SCOPE_OVERLAY: ScopeOverlaySettings = {
+  adsFov: 50,
+  scopeShape: 'square',
   frameSizePx: 158,
   frameBorderPx: 0,
   frameRadiusPx: 0,
@@ -71,15 +78,20 @@ export function applyScopeOverlay(
   if (!frame || !lens || !dot || !vignette) return
 
   const size = settings.frameSizePx
+  const round = settings.scopeShape === 'round'
+  const cornerRadius = round ? '50%' : `${settings.frameRadiusPx}px`
+  const lensRadius = round ? '50%' : `${Math.max(0, settings.frameRadiusPx - 1)}px`
+
   frame.style.width = `${size}px`
   frame.style.height = `${size}px`
   frame.style.borderWidth = `${settings.frameBorderPx}px`
-  frame.style.borderRadius = `${settings.frameRadiusPx}px`
+  frame.style.borderRadius = cornerRadius
   frame.style.borderColor = settings.frameBorderColor
   frame.style.display = 'block'
+  frame.style.overflow = round ? 'hidden' : ''
 
   lens.style.inset = `${settings.lensInsetPx}px`
-  lens.style.borderRadius = `${Math.max(0, settings.frameRadiusPx - 1)}px`
+  lens.style.borderRadius = lensRadius
 
   dot.style.width = `${settings.dotSizePx}px`
   dot.style.height = `${settings.dotSizePx}px`

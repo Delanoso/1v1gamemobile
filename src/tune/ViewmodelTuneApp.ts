@@ -79,9 +79,10 @@ type ScopeSliderSpec = {
 }
 
 const SCOPE_SLIDERS: ScopeSliderSpec[] = [
+  { key: 'adsFov', label: 'Zoom', min: 32, max: 62, step: 1 },
   { key: 'frameSizePx', label: 'Frame', min: 60, max: 220, step: 1 },
   { key: 'frameBorderPx', label: 'Border', min: 0, max: 8, step: 1 },
-  { key: 'frameRadiusPx', label: 'Radius', min: 0, max: 24, step: 1 },
+  { key: 'frameRadiusPx', label: 'Radius', min: 0, max: 80, step: 1 },
   { key: 'lensInsetPx', label: 'Lens in', min: 0, max: 24, step: 1 },
   { key: 'dotSizePx', label: 'Dot', min: 0, max: 12, step: 1 },
   { key: 'dotOffsetX', label: 'Dot X', min: -30, max: 30, step: 1 },
@@ -237,13 +238,13 @@ export class ViewmodelTuneApp {
     this.vmGroup.visible = this.mode !== 'scope'
 
     if (this.mode === 'scope') {
-      hint.textContent = 'Tune the ADS scope overlay. Sliders adjust frame, dot, and vignette.'
-      this.camera.fov = GAME.weapon.adsFov
+      hint.textContent = 'Tune scope overlay. Zoom: lower = more magnification. Square/round for different optics.'
+      this.camera.fov = this.scope.adsFov
       this.copyBtn.textContent = 'Copy scope'
       this.resetBtn.textContent = 'Reset scope'
     } else {
       hint.textContent = 'Drag the view to move the gun. Use sliders for depth & rotation.'
-      this.camera.fov = this.mode === 'ads' ? GAME.weapon.adsFov : GAME.weapon.hipFov
+      this.camera.fov = this.mode === 'ads' ? this.scope.adsFov : GAME.weapon.hipFov
       this.copyBtn.textContent = 'Copy pose'
       this.resetBtn.textContent = 'Reset pose'
     }
@@ -265,6 +266,10 @@ export class ViewmodelTuneApp {
 
     applyScopeOverlay(this.scopeOverlay, this.scope, 1)
     saveScopeOverlaySettings(this.scope)
+    if (this.mode === 'scope' || this.mode === 'ads') {
+      this.camera.fov = this.scope.adsFov
+      this.camera.updateProjectionMatrix()
+    }
     this.refreshSliders()
     this.refreshOutput()
   }
@@ -309,6 +314,23 @@ export class ViewmodelTuneApp {
   }
 
   private buildScopeSliders(): void {
+    const shapeRow = document.createElement('div')
+    shapeRow.className = 'tune-modes tune-shape'
+    shapeRow.innerHTML = `
+      <button type="button" data-shape="square">SQUARE</button>
+      <button type="button" data-shape="round">ROUND</button>
+    `
+    shapeRow.querySelectorAll<HTMLButtonElement>('[data-shape]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.shape === this.scope.scopeShape)
+      btn.addEventListener('click', () => {
+        this.scope.scopeShape = btn.dataset.shape as 'square' | 'round'
+        shapeRow.querySelectorAll('[data-shape]').forEach((b) => b.classList.remove('active'))
+        btn.classList.add('active')
+        this.applyAll()
+      })
+    })
+    this.sliderContainer.appendChild(shapeRow)
+
     for (const spec of SCOPE_SLIDERS) {
       const row = document.createElement('div')
       row.className = 'tune-row'
@@ -353,8 +375,14 @@ export class ViewmodelTuneApp {
         const val = row.querySelector('.val')!
         const n = this.scope[spec.key] as number
         input.value = String(n)
-        val.textContent = Number.isInteger(spec.step) ? String(Math.round(n)) : n.toFixed(2)
+        if (spec.key === 'adsFov') {
+          val.textContent = `${Math.round(n)}°`
+        } else {
+          val.textContent = Number.isInteger(spec.step) ? String(Math.round(n)) : n.toFixed(2)
+        }
       }
+      const shapeBtns = this.sliderContainer.querySelectorAll<HTMLButtonElement>('[data-shape]')
+      shapeBtns.forEach((btn) => btn.classList.toggle('active', btn.dataset.shape === this.scope.scopeShape))
       const dotCheck = this.sliderContainer.querySelector('[data-check="showDot"]') as HTMLInputElement
       const vigCheck = this.sliderContainer.querySelector('[data-check="showVignette"]') as HTMLInputElement
       if (dotCheck) dotCheck.checked = this.scope.showDot

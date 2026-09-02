@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { GAME } from '../../config/gameConfig'
+import { getScopeOverlaySettings } from '../../ui/scopeOverlay'
 import type { FrameInput } from '../input/InputManager'
 import {
   groundHeightAt,
@@ -145,7 +146,7 @@ export class PlayerController {
     const bobY = Math.sin(this.bobPhase) * bobAmp * Math.min(1, this.moveSpeed / p.walkSpeed)
     const bobX = Math.cos(this.bobPhase * 0.5) * bobAmp * 0.35
 
-    let targetFov = ads ? GAME.weapon.adsFov : GAME.weapon.hipFov
+    let targetFov = ads ? getScopeOverlaySettings().adsFov : GAME.weapon.hipFov
     if (sprintingForward && !ads) targetFov += p.sprintFovBoost
     const fovSpeed = ads ? GAME.weapon.adsInSpeed : GAME.weapon.adsOutSpeed
     this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * fovSpeed)
