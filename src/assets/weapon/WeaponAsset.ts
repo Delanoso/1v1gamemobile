@@ -179,17 +179,37 @@ export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Grou
 /** Lay a horizontal imported weapon along camera forward (-Z) for first-person view. */
 export function orientImportedViewModel(source: THREE.Group): THREE.Group {
   const vm = source.clone(true)
-  vm.rotation.order = 'YXZ'
-  vm.rotation.set(-Math.PI / 2, Math.PI / 2, 0)
+  vm.rotation.set(0, 0, 0)
   vm.updateMatrixWorld(true)
 
   const box = new THREE.Box3().setFromObject(vm)
   const size = box.getSize(new THREE.Vector3())
+  const forward = new THREE.Vector3(0, 0, -1)
+
+  const axes = [
+    new THREE.Vector3(1, 0, 0),
+    new THREE.Vector3(0, 1, 0),
+    new THREE.Vector3(0, 0, 1),
+  ]
+  const lengths = [size.x, size.y, size.z]
+  const longIdx = lengths.indexOf(Math.max(...lengths))
+  const longAxis = axes[longIdx]
+
+  vm.quaternion.setFromUnitVectors(longAxis, forward)
+  vm.rotateX(0.02)
+  vm.updateMatrixWorld(true)
+
   const targetLength = 0.42
-  const length = Math.max(size.x, size.y, size.z)
+  const length = Math.max(...lengths)
   vm.scale.setScalar(targetLength / Math.max(length, 0.01))
-  vm.rotation.x += 0.02
-  vm.position.set(0.14, -0.15, -0.08)
+
+  vm.updateMatrixWorld(true)
+  const bounds = new THREE.Box3().setFromObject(vm)
+  vm.position.set(
+    0.14 - bounds.min.x,
+    -0.15 - bounds.min.y,
+    -0.08 - bounds.max.z,
+  )
   return vm
 }
 
