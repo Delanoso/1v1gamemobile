@@ -266,9 +266,6 @@ export class Game {
       ads,
       this.player.moveSpeed,
       new THREE.Vector2(this.player.lookDeltaScratch.x, this.player.lookDeltaScratch.y),
-      this.player.camera,
-      window.innerWidth,
-      window.innerHeight,
     )
 
     if (this.rain) {

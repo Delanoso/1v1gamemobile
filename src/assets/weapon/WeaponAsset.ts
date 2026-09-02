@@ -184,9 +184,9 @@ export const VIEWMODEL_HIP = {
   rotation: new THREE.Euler(0.11, 0.18, -0.03, 'YXZ'),
 }
 
-/** ADS pose — barrel level with camera forward, optic at crosshair. */
+/** ADS pose — optic at crosshair; holo offset handled on model. */
 export const VIEWMODEL_ADS = {
-  position: new THREE.Vector3(0, -0.045, -0.12),
+  position: new THREE.Vector3(0, 0, -0.12),
   rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
 }
 
@@ -196,14 +196,14 @@ function meshUsesMaterial(mesh: THREE.Mesh, names: string[]): boolean {
 }
 
 function collectSightMeshes(rig: THREE.Object3D): THREE.Mesh[] {
-  const glass: THREE.Mesh[] = []
   const holo: THREE.Mesh[] = []
+  const glass: THREE.Mesh[] = []
   rig.traverse((o) => {
     if (!(o instanceof THREE.Mesh)) return
-    if (meshUsesMaterial(o, ['glass'])) glass.push(o)
-    else if (meshUsesMaterial(o, ['holo'])) holo.push(o)
+    if (meshUsesMaterial(o, ['holo'])) holo.push(o)
+    else if (meshUsesMaterial(o, ['glass'])) glass.push(o)
   })
-  return glass.length > 0 ? glass : holo
+  return holo.length > 0 ? holo : glass
 }
 
 /** Red-dot glass center in rig local space. */
