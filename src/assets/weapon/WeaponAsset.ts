@@ -202,27 +202,18 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
   const rig = new THREE.Group()
   rig.add(gun)
   rig.rotation.order = 'YXZ'
-  // Barrel +Z → -Z. Roll receiver toward camera (COD-style lower-right profile).
   rig.rotation.set(0.06, Math.PI, -0.28)
   rig.updateMatrixWorld(true)
 
   let bounds = new THREE.Box3().setFromObject(rig)
-  // Anchor grip at rig origin; muzzle extends into -Z (in front of camera).
   gun.position.x -= bounds.getCenter(new THREE.Vector3()).x
   gun.position.y -= bounds.min.y
   gun.position.z -= bounds.max.z
-
   rig.updateMatrixWorld(true)
+
   bounds = new THREE.Box3().setFromObject(rig)
-  if (bounds.min.z > -0.05) {
-    rig.rotation.y += Math.PI
-    gun.position.set(0, 0, 0)
-    rig.updateMatrixWorld(true)
-    bounds = new THREE.Box3().setFromObject(rig)
-    gun.position.x -= bounds.getCenter(new THREE.Vector3()).x
-    gun.position.y -= bounds.min.y
-    gun.position.z -= bounds.max.z
-  }
+  if (bounds.max.z > 0.01) gun.position.z -= bounds.max.z
+  rig.updateMatrixWorld(true)
 
   return rig
 }
@@ -231,8 +222,10 @@ let m4ViewModelCache: Promise<THREE.Group> | null = null
 
 /** Start loading the M4 viewmodel early (menu screen). */
 export function preloadM4ViewModel(): Promise<THREE.Group> {
-  if (!m4ViewModelCache) m4ViewModelCache = buildImportedViewModel()
-  return m4ViewModelCache
+  if (!m4ViewModelCache) {
+    m4ViewModelCache = buildImportedViewModel()
+  }
+  return m4ViewModelCache.then((rig) => rig.clone(true))
 }
 
 export async function buildWeapon(variant: WeaponVariant = 'm4a1'): Promise<WeaponBuildResult> {
