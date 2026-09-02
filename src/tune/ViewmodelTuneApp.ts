@@ -9,15 +9,23 @@ import {
   preloadM4ViewModel,
 } from '../assets/weapon/WeaponAsset'
 import { getRendererPixelRatio } from '../utils/deviceProfile'
+import {
+  DEFAULT_SCOPE_OVERLAY,
+  applyScopeOverlay,
+  getScopeOverlaySettings,
+  saveScopeOverlaySettings,
+  scopeSettingsToCode,
+  type ScopeOverlaySettings,
+} from '../ui/scopeOverlay'
 
-type PoseMode = 'hip' | 'ads'
+type TuneMode = 'hip' | 'ads' | 'scope'
 
 interface Pose {
   position: THREE.Vector3
   rotation: THREE.Euler
 }
 
-const STORAGE_KEY = 'frontline-vm-tune-v1'
+const POSE_STORAGE_KEY = 'frontline-vm-tune-v1'
 const DRAG_SENS = 0.00055
 
 function clonePose(src: { position: THREE.Vector3; rotation: THREE.Euler }): Pose {
@@ -38,7 +46,7 @@ function poseToCode(name: string, pose: Pose): string {
 
 function loadSavedPoses(): { hip: Pose; ads: Pose } | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(POSE_STORAGE_KEY)
     if (!raw) return null
     const data = JSON.parse(raw) as {
       hip: { position: number[]; rotation: number[] }
@@ -59,24 +67,52 @@ function savePoses(hip: Pose, ads: Pose): void {
     position: pose.position.toArray(),
     rotation: [pose.rotation.x, pose.rotation.y, pose.rotation.z],
   })
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ hip: pack(hip), ads: pack(ads) }))
+  localStorage.setItem(POSE_STORAGE_KEY, JSON.stringify({ hip: pack(hip), ads: pack(ads) }))
 }
 
-/** Drag-to-position FPS viewmodel tuner — open /tune.html */
+type ScopeSliderSpec = {
+  key: keyof ScopeOverlaySettings
+  label: string
+  min: number
+  max: number
+  step: number
+}
+
+const SCOPE_SLIDERS: ScopeSliderSpec[] = [
+  { key: 'frameSizePx', label: 'Frame', min: 60, max: 220, step: 1 },
+  { key: 'frameBorderPx', label: 'Border', min: 0, max: 8, step: 1 },
+  { key: 'frameRadiusPx', label: 'Radius', min: 0, max: 24, step: 1 },
+  { key: 'lensInsetPx', label: 'Lens in', min: 0, max: 24, step: 1 },
+  { key: 'dotSizePx', label: 'Dot', min: 0, max: 12, step: 1 },
+  { key: 'dotOffsetX', label: 'Dot X', min: -30, max: 30, step: 1 },
+  { key: 'dotOffsetY', label: 'Dot Y', min: -30, max: 30, step: 1 },
+  { key: 'vignetteInnerRatio', label: 'Vig in', min: 0.2, max: 0.8, step: 0.01 },
+  { key: 'vignetteOuterRatio', label: 'Vig out', min: 0.5, max: 1.4, step: 0.01 },
+  { key: 'vignetteOpacity', label: 'Vig dim', min: 0, max: 0.9, step: 0.01 },
+  { key: 'vignetteEdgeOpacity', label: 'Vig edge', min: 0, max: 0.95, step: 0.01 },
+]
+
+/** Drag-to-position FPS viewmodel + scope overlay tuner — open /tune.html */
 export class ViewmodelTuneApp {
   private readonly renderer: THREE.WebGLRenderer
   private readonly scene = new THREE.Scene()
   private readonly camera = new THREE.PerspectiveCamera(GAME.weapon.hipFov, 1, 0.05, 100)
   private readonly vmGroup = new THREE.Group()
+  private readonly overlay: HTMLElement
+  private readonly scopeOverlay: HTMLElement
+  private readonly sliderContainer: HTMLElement
+  private readonly outputEl: HTMLElement
+  private readonly toastEl: HTMLElement
+  private readonly copyBtn: HTMLButtonElement
+  private readonly resetBtn: HTMLButtonElement
   private model: THREE.Group
   private adsAimOffset = new THREE.Vector3()
   private readonly hip: Pose
   private readonly ads: Pose
-  private mode: PoseMode = 'hip'
+  private scope: ScopeOverlaySettings
+  private mode: TuneMode = 'hip'
   private dragging = false
   private lastPointer = new THREE.Vector2()
-  private readonly outputEl: HTMLElement
-  private readonly toastEl: HTMLElement
 
   constructor(host: HTMLElement) {
     host.className = 'tune-host'
@@ -84,6 +120,7 @@ export class ViewmodelTuneApp {
     const saved = loadSavedPoses()
     this.hip = saved?.hip ?? clonePose(VIEWMODEL_HIP)
     this.ads = saved?.ads ?? clonePose(VIEWMODEL_ADS)
+    this.scope = getScopeOverlaySettings()
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
     this.renderer.setPixelRatio(getRendererPixelRatio())
@@ -114,65 +151,69 @@ export class ViewmodelTuneApp {
     this.adsAimOffset.copy(computeAdsAimOffset(this.model))
     this.vmGroup.add(this.model)
 
-    const overlay = document.createElement('div')
-    overlay.className = 'tune-overlay'
-    overlay.innerHTML = `
+    this.overlay = document.createElement('div')
+    this.overlay.className = 'tune-overlay'
+    this.overlay.innerHTML = `
       <div class="crosshair" id="tune-crosshair">
         <span class="ch h"></span><span class="ch v"></span>
       </div>
-      <div class="scope-overlay active" id="tune-scope" aria-hidden="true">
+      <div class="scope-overlay" id="tune-scope" aria-hidden="true">
         <div class="scope-vignette"></div>
-        <div class="scope-frame" style="width:118px;height:118px">
+        <div class="scope-frame">
           <div class="scope-lens"></div>
           <div class="scope-dot"></div>
         </div>
       </div>
     `
-    host.appendChild(overlay)
+    host.appendChild(this.overlay)
+    this.scopeOverlay = this.overlay.querySelector('#tune-scope')!
 
     const panel = document.createElement('div')
     panel.className = 'tune-panel'
     panel.innerHTML = `
       <h1>VIEWMODEL TUNER</h1>
-      <p class="sub">Drag the view to move the gun. Use sliders for depth &amp; rotation. Copy pose into WeaponAsset.ts.</p>
+      <p class="sub" id="tune-hint">Drag the view to move the gun. Use sliders for depth &amp; rotation.</p>
       <div class="tune-modes">
         <button type="button" data-mode="hip" class="active">HIP</button>
         <button type="button" data-mode="ads">ADS</button>
+        <button type="button" data-mode="scope">SCOPE</button>
       </div>
       <div id="tune-sliders"></div>
       <div class="tune-actions">
         <button type="button" id="tune-reset">Reset</button>
-        <button type="button" id="tune-copy" class="primary">Copy pose</button>
+        <button type="button" id="tune-copy" class="primary">Copy</button>
       </div>
       <pre class="tune-output" id="tune-output"></pre>
     `
     host.appendChild(panel)
 
+    this.sliderContainer = panel.querySelector('#tune-sliders')!
     this.outputEl = panel.querySelector('#tune-output')!
+    this.copyBtn = panel.querySelector('#tune-copy')!
+    this.resetBtn = panel.querySelector('#tune-reset')!
     this.toastEl = document.createElement('div')
     this.toastEl.className = 'tune-toast'
     host.appendChild(this.toastEl)
 
-    this.buildSliders(panel.querySelector('#tune-sliders')!)
     panel.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        this.mode = btn.dataset.mode as PoseMode
+        this.mode = btn.dataset.mode as TuneMode
         panel.querySelectorAll('[data-mode]').forEach((b) => b.classList.remove('active'))
         btn.classList.add('active')
-        this.syncModeUi(overlay)
-        this.applyPose()
-        this.refreshOutput()
+        this.rebuildSliders()
+        this.syncModeUi()
+        this.applyAll()
       })
     })
-    panel.querySelector('#tune-reset')!.addEventListener('click', () => this.resetCurrent())
-    panel.querySelector('#tune-copy')!.addEventListener('click', () => void this.copyPose())
+    this.resetBtn.addEventListener('click', () => this.resetCurrent())
+    this.copyBtn.addEventListener('click', () => void this.copyOutput())
 
     this.bindDrag(host)
     window.addEventListener('resize', () => this.onResize())
     this.onResize()
-    this.syncModeUi(overlay)
-    this.applyPose()
-    this.refreshOutput()
+    this.rebuildSliders()
+    this.syncModeUi()
+    this.applyAll()
     void this.loadM4()
 
     const loop = () => {
@@ -183,33 +224,61 @@ export class ViewmodelTuneApp {
   }
 
   private activePose(): Pose {
-    return this.mode === 'hip' ? this.hip : this.ads
+    return this.mode === 'ads' ? this.ads : this.hip
   }
 
-  private syncModeUi(overlay: HTMLElement): void {
-    const crosshair = overlay.querySelector('#tune-crosshair')!
-    const scope = overlay.querySelector('#tune-scope')!
-    crosshair.classList.toggle('ads', this.mode === 'ads')
-    scope.classList.toggle('active', this.mode === 'ads')
-    this.camera.fov = this.mode === 'ads' ? GAME.weapon.adsFov : GAME.weapon.hipFov
+  private syncModeUi(): void {
+    const crosshair = this.overlay.querySelector('#tune-crosshair')!
+    const hint = document.querySelector('#tune-hint')!
+    const showScope = this.mode === 'ads' || this.mode === 'scope'
+
+    crosshair.classList.toggle('ads', showScope)
+    this.scopeOverlay.classList.toggle('active', showScope)
+    this.vmGroup.visible = this.mode !== 'scope'
+
+    if (this.mode === 'scope') {
+      hint.textContent = 'Tune the ADS scope overlay. Sliders adjust frame, dot, and vignette.'
+      this.camera.fov = GAME.weapon.adsFov
+      this.copyBtn.textContent = 'Copy scope'
+      this.resetBtn.textContent = 'Reset scope'
+    } else {
+      hint.textContent = 'Drag the view to move the gun. Use sliders for depth & rotation.'
+      this.camera.fov = this.mode === 'ads' ? GAME.weapon.adsFov : GAME.weapon.hipFov
+      this.copyBtn.textContent = 'Copy pose'
+      this.resetBtn.textContent = 'Reset pose'
+    }
     this.camera.updateProjectionMatrix()
   }
 
-  private applyPose(): void {
-    const pose = this.activePose()
-    this.vmGroup.position.copy(pose.position)
-    this.vmGroup.rotation.copy(pose.rotation)
-    if (this.mode === 'ads') {
-      this.model.position.copy(this.adsAimOffset)
-    } else {
-      this.model.position.set(0, 0, 0)
+  private applyAll(): void {
+    if (this.mode !== 'scope') {
+      const pose = this.activePose()
+      this.vmGroup.position.copy(pose.position)
+      this.vmGroup.rotation.copy(pose.rotation)
+      if (this.mode === 'ads') {
+        this.model.position.copy(this.adsAimOffset)
+      } else {
+        this.model.position.set(0, 0, 0)
+      }
+      savePoses(this.hip, this.ads)
     }
-    savePoses(this.hip, this.ads)
+
+    applyScopeOverlay(this.scopeOverlay, this.scope, 1)
+    saveScopeOverlaySettings(this.scope)
     this.refreshSliders()
     this.refreshOutput()
   }
 
-  private buildSliders(container: HTMLElement): void {
+  private rebuildSliders(): void {
+    this.sliderContainer.innerHTML = ''
+    if (this.mode === 'scope') {
+      this.buildScopeSliders()
+      return
+    }
+    this.buildPoseSliders()
+  }
+
+  private buildPoseSliders(): void {
     const axes = [
       { key: 'px', label: 'Pos X', min: -0.35, max: 0.35, step: 0.001, pose: 'position', axis: 'x' },
       { key: 'py', label: 'Pos Y', min: -0.35, max: 0.35, step: 0.001, pose: 'position', axis: 'y' },
@@ -233,13 +302,66 @@ export class ViewmodelTuneApp {
         const pose = this.activePose()
         const target = spec.pose === 'position' ? pose.position : pose.rotation
         target[spec.axis] = parseFloat(input.value)
-        this.applyPose()
+        this.applyAll()
       })
-      container.appendChild(row)
+      this.sliderContainer.appendChild(row)
+    }
+  }
+
+  private buildScopeSliders(): void {
+    for (const spec of SCOPE_SLIDERS) {
+      const row = document.createElement('div')
+      row.className = 'tune-row'
+      row.dataset.key = spec.key
+      row.innerHTML = `
+        <label>${spec.label}</label>
+        <input type="range" min="${spec.min}" max="${spec.max}" step="${spec.step}" />
+        <span class="val">0</span>
+      `
+      const input = row.querySelector('input')!
+      input.addEventListener('input', () => {
+        const v = parseFloat(input.value)
+        this.scope[spec.key] = v as never
+        this.applyAll()
+      })
+      this.sliderContainer.appendChild(row)
+    }
+
+    for (const [key, label] of [
+      ['showDot', 'Red dot'],
+      ['showVignette', 'Vignette'],
+    ] as const) {
+      const row = document.createElement('label')
+      row.className = 'tune-check'
+      row.innerHTML = `<input type="checkbox" data-check="${key}" /> ${label}`
+      row.querySelector('input')!.addEventListener('change', (e) => {
+        const checked = (e.target as HTMLInputElement).checked
+        if (key === 'showDot') this.scope.showDot = checked
+        else this.scope.showVignette = checked
+        this.applyAll()
+      })
+      this.sliderContainer.appendChild(row)
     }
   }
 
   private refreshSliders(): void {
+    if (this.mode === 'scope') {
+      for (const spec of SCOPE_SLIDERS) {
+        const row = this.sliderContainer.querySelector(`[data-key="${spec.key}"]`)
+        if (!row) continue
+        const input = row.querySelector('input') as HTMLInputElement
+        const val = row.querySelector('.val')!
+        const n = this.scope[spec.key] as number
+        input.value = String(n)
+        val.textContent = Number.isInteger(spec.step) ? String(Math.round(n)) : n.toFixed(2)
+      }
+      const dotCheck = this.sliderContainer.querySelector('[data-check="showDot"]') as HTMLInputElement
+      const vigCheck = this.sliderContainer.querySelector('[data-check="showVignette"]') as HTMLInputElement
+      if (dotCheck) dotCheck.checked = this.scope.showDot
+      if (vigCheck) vigCheck.checked = this.scope.showVignette
+      return
+    }
+
     const pose = this.activePose()
     const map: Record<string, number> = {
       px: pose.position.x,
@@ -249,7 +371,7 @@ export class ViewmodelTuneApp {
       ry: pose.rotation.y,
       rz: pose.rotation.z,
     }
-    document.querySelectorAll<HTMLElement>('.tune-row').forEach((row) => {
+    this.sliderContainer.querySelectorAll<HTMLElement>('.tune-row').forEach((row) => {
       const key = row.dataset.key!
       const input = row.querySelector('input') as HTMLInputElement
       const val = row.querySelector('.val')!
@@ -259,23 +381,36 @@ export class ViewmodelTuneApp {
   }
 
   private refreshOutput(): void {
+    if (this.mode === 'scope') {
+      this.outputEl.textContent = scopeSettingsToCode(this.scope)
+      return
+    }
     this.outputEl.textContent = `${poseToCode('HIP', this.hip)}\n\n${poseToCode('ADS', this.ads)}`
   }
 
   private resetCurrent(): void {
+    if (this.mode === 'scope') {
+      this.scope = { ...DEFAULT_SCOPE_OVERLAY }
+      this.applyAll()
+      this.toast('Reset scope to defaults')
+      return
+    }
     const defaults = this.mode === 'hip' ? VIEWMODEL_HIP : VIEWMODEL_ADS
     const pose = this.activePose()
     pose.position.copy(defaults.position)
     pose.rotation.copy(defaults.rotation)
-    this.applyPose()
-    this.toast('Reset to code defaults')
+    this.applyAll()
+    this.toast('Reset pose to code defaults')
   }
 
-  private async copyPose(): Promise<void> {
-    const text = `${poseToCode('HIP', this.hip)}\n\n${poseToCode('ADS', this.ads)}`
+  private async copyOutput(): Promise<void> {
+    const text =
+      this.mode === 'scope'
+        ? scopeSettingsToCode(this.scope)
+        : `${poseToCode('HIP', this.hip)}\n\n${poseToCode('ADS', this.ads)}`
     try {
       await navigator.clipboard.writeText(text)
-      this.toast('Copied HIP + ADS to clipboard')
+      this.toast(this.mode === 'scope' ? 'Copied scope settings' : 'Copied HIP + ADS poses')
     } catch {
       this.outputEl.textContent = text
       this.toast('Copy failed — select text below')
@@ -290,32 +425,30 @@ export class ViewmodelTuneApp {
 
   private bindDrag(host: HTMLElement): void {
     const canvas = this.renderer.domElement
-    const start = (x: number, y: number) => {
-      this.dragging = true
-      this.lastPointer.set(x, y)
-    }
     const move = (x: number, y: number) => {
-      if (!this.dragging) return
+      if (!this.dragging || this.mode === 'scope') return
       const dx = x - this.lastPointer.x
       const dy = y - this.lastPointer.y
       this.lastPointer.set(x, y)
       const pose = this.activePose()
       pose.position.x += dx * DRAG_SENS
       pose.position.y -= dy * DRAG_SENS
-      this.applyPose()
-    }
-    const end = () => {
-      this.dragging = false
+      this.applyAll()
     }
 
     canvas.addEventListener('pointerdown', (e) => {
-      if ((e.target as HTMLElement).closest('.tune-panel')) return
+      if ((e.target as HTMLElement).closest('.tune-panel') || this.mode === 'scope') return
       canvas.setPointerCapture(e.pointerId)
-      start(e.clientX, e.clientY)
+      this.dragging = true
+      this.lastPointer.set(e.clientX, e.clientY)
     })
     canvas.addEventListener('pointermove', (e) => move(e.clientX, e.clientY))
-    canvas.addEventListener('pointerup', end)
-    canvas.addEventListener('pointercancel', end)
+    canvas.addEventListener('pointerup', () => {
+      this.dragging = false
+    })
+    canvas.addEventListener('pointercancel', () => {
+      this.dragging = false
+    })
 
     host.addEventListener(
       'touchmove',
@@ -333,7 +466,7 @@ export class ViewmodelTuneApp {
       this.model = glb
       this.adsAimOffset.copy(computeAdsAimOffset(this.model))
       this.vmGroup.add(this.model)
-      this.applyPose()
+      this.applyAll()
       this.toast('M4 Tan loaded')
     } catch {
       this.toast('Using procedural gun — M4 still loading')

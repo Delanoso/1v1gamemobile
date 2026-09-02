@@ -1,4 +1,9 @@
 import { GAME } from '../config/gameConfig'
+import {
+  applyScopeOverlay,
+  getScopeOverlaySettings,
+  type ScopeOverlaySettings,
+} from './scopeOverlay'
 
 export class HUD {
   readonly root: HTMLElement
@@ -7,11 +12,10 @@ export class HUD {
   private feedEl: HTMLElement
   private crosshair: HTMLElement
   private scopeOverlay: HTMLElement
-  private scopeFrame: HTMLElement
-  private scopeVignette: HTMLElement
   private hitmarker: HTMLElement
   private modeEl: HTMLElement
   private sprintEl: HTMLElement
+  private scopeSettings: ScopeOverlaySettings
 
   constructor(host: HTMLElement) {
     this.root = document.createElement('div')
@@ -50,11 +54,11 @@ export class HUD {
     this.feedEl = this.root.querySelector('#kill-feed')!
     this.crosshair = this.root.querySelector('#crosshair')!
     this.scopeOverlay = this.root.querySelector('#scope-overlay')!
-    this.scopeFrame = this.root.querySelector('.scope-frame')!
-    this.scopeVignette = this.root.querySelector('.scope-vignette')!
     this.hitmarker = this.root.querySelector('#hitmarker')!
     this.modeEl = this.root.querySelector('#hud-mode')!
     this.sprintEl = this.root.querySelector('#sprint-tag')!
+    this.scopeSettings = getScopeOverlaySettings()
+    applyScopeOverlay(this.scopeOverlay, this.scopeSettings, 0)
   }
 
   setVisible(v: boolean): void {
@@ -79,18 +83,13 @@ export class HUD {
     this.sprintEl.classList.toggle('show', sprinting)
   }
 
-  setAds(ads: boolean, blend = ads ? 1 : 0, scopeFramePx = 180): void {
+  setAds(ads: boolean, blend = ads ? 1 : 0, _scopeFramePx?: number): void {
     const amount = ads ? Math.max(blend, 0.35) : blend
     this.crosshair.classList.toggle('ads', amount > 0.5)
     this.scopeOverlay.classList.toggle('active', amount > 0.08)
-    this.scopeOverlay.style.opacity = String(Math.min(1, amount))
     this.scopeOverlay.setAttribute('aria-hidden', amount > 0.08 ? 'false' : 'true')
-
-    const size = `${scopeFramePx}px`
-    this.scopeFrame.style.width = size
-    this.scopeFrame.style.height = size
-    this.scopeVignette.style.setProperty('--scope-inner', `${scopeFramePx * 0.5}px`)
-    this.scopeVignette.style.setProperty('--scope-outer', `${scopeFramePx * 0.95}px`)
+    this.scopeSettings = getScopeOverlaySettings()
+    applyScopeOverlay(this.scopeOverlay, this.scopeSettings, amount)
   }
 
   flashHitmarker(killed = false): void {
