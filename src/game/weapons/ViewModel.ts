@@ -1,25 +1,16 @@
 import * as THREE from 'three'
 import { GAME } from '../../config/gameConfig'
-import { buildViewModelGroup, preloadM4ViewModel } from '../../assets/weapon/WeaponAsset'
+import { buildViewModelGroup, isViewmodelVisible, preloadM4ViewModel } from '../../assets/weapon/WeaponAsset'
 
 const HIP_POS = new THREE.Vector3(0.26, -0.23, -0.04)
 const ADS_POS = new THREE.Vector3(0.0, -0.08, -0.1)
 const HIP_ROT = new THREE.Euler(0.04, 0.08, 0, 'YXZ')
 const ADS_ROT = new THREE.Euler(0.02, 0.0, 0, 'YXZ')
 
-function isViewmodelVisible(rig: THREE.Object3D): boolean {
-  rig.updateMatrixWorld(true)
-  const box = new THREE.Box3().setFromObject(rig)
-  if (box.isEmpty()) return false
-  // In camera space -Z is forward; visible gun should extend into negative Z.
-  return box.min.z < -0.08 && box.max.z < 0.15
-}
-
 /** First-person weapon mesh with recoil animation. */
 export class WeaponViewModel {
   readonly group = new THREE.Group()
   private model: THREE.Group
-  private usesGlbPose = false
   private adsBlend = 0
   private kick = 0
   private sway = new THREE.Vector2()
@@ -27,6 +18,7 @@ export class WeaponViewModel {
   private readonly tmpEuler = new THREE.Euler(0, 0, 0, 'YXZ')
 
   constructor() {
+    this.group.rotation.order = 'YXZ'
     this.model = buildViewModelGroup('m4a1')
     this.group.add(this.model)
     void this.loadM4Tan()
@@ -41,7 +33,6 @@ export class WeaponViewModel {
       }
       this.group.remove(this.model)
       this.model = glbModel
-      this.usesGlbPose = true
       this.group.add(this.model)
     } catch (err) {
       console.warn('M4 Tan viewmodel unavailable, using procedural fallback', err)
@@ -63,38 +54,21 @@ export class WeaponViewModel {
     const targetAds = ads ? 1 : 0
     this.adsBlend = THREE.MathUtils.lerp(this.adsBlend, targetAds, 1 - Math.exp(-dt * 14))
 
-    if (this.usesGlbPose) {
-      this.tmpPos.lerpVectors(HIP_POS, ADS_POS, this.adsBlend)
-      this.tmpEuler.x = THREE.MathUtils.lerp(HIP_ROT.x, ADS_ROT.x, this.adsBlend)
-      this.tmpEuler.y = THREE.MathUtils.lerp(HIP_ROT.y, ADS_ROT.y, this.adsBlend)
-      this.tmpEuler.z = THREE.MathUtils.lerp(HIP_ROT.z, ADS_ROT.z, this.adsBlend)
+    this.tmpPos.lerpVectors(HIP_POS, ADS_POS, this.adsBlend)
+    this.tmpEuler.x = THREE.MathUtils.lerp(HIP_ROT.x, ADS_ROT.x, this.adsBlend)
+    this.tmpEuler.y = THREE.MathUtils.lerp(HIP_ROT.y, ADS_ROT.y, this.adsBlend)
+    this.tmpEuler.z = THREE.MathUtils.lerp(HIP_ROT.z, ADS_ROT.z, this.adsBlend)
 
-      this.group.position.set(
-        this.tmpPos.x + this.sway.x,
-        this.tmpPos.y + this.sway.y + bob,
-        this.tmpPos.z - this.kick * 0.2,
-      )
-      this.group.rotation.set(
-        this.tmpEuler.x + this.kick,
-        this.tmpEuler.y + this.sway.x * 0.35,
-        this.tmpEuler.z + this.sway.y * 0.25,
-      )
-      this.model.position.set(0, 0, 0)
-      return
-    }
-
-    const adsOffset = ads ? -0.06 : 0
-    const adsTilt = ads ? 0.04 : 0
     this.group.position.set(
-      0.14 + this.sway.x + adsOffset,
-      -0.16 + this.sway.y + bob,
-      -0.1,
+      this.tmpPos.x + this.sway.x,
+      this.tmpPos.y + this.sway.y + bob,
+      this.tmpPos.z - this.kick * 0.2,
     )
     this.group.rotation.set(
-      this.kick + adsTilt,
-      this.sway.x * 0.5,
-      this.sway.y * 0.3,
+      this.tmpEuler.x + this.kick,
+      this.tmpEuler.y + this.sway.x * 0.35,
+      this.tmpEuler.z + this.sway.y * 0.25,
     )
-    this.model.position.set(0.14, -0.15, -0.08 - this.kick * 0.35)
+    this.model.position.set(0, 0, -this.kick * 0.05)
   }
 }

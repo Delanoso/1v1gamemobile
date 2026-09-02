@@ -171,9 +171,19 @@ export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Grou
   const { group } = buildProceduralWeapon(variant)
   const vm = group.clone(true)
   vm.scale.setScalar(1.05)
-  vm.rotation.set(0.02, 0, 0)
-  vm.position.set(0.14, -0.15, -0.08)
+  seatFpsViewmodelMesh(vm)
   return vm
+}
+
+/** Seat a mesh so stock is near origin and muzzle extends into -Z (camera forward). */
+function seatFpsViewmodelMesh(root: THREE.Object3D): void {
+  root.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(root)
+  root.position.set(
+    -box.getCenter(new THREE.Vector3()).x,
+    -box.min.y,
+    -box.max.z,
+  )
 }
 
 /** Seat weapon rig so stock is near origin and muzzle extends into -Z (in front of camera). */
@@ -185,6 +195,83 @@ function seatFpsViewmodelRig(mount: THREE.Group, orient: THREE.Object3D): void {
     -box.min.y,
     -box.max.z,
   )
+}
+
+const FPS_VIEW_ROTATIONS: ReadonlyArray<[number, number, number]> = [
+  [0.08, Math.PI, -0.25],
+  [0.05, Math.PI, -0.2],
+  [0.1, Math.PI, -0.3],
+  [0, Math.PI, -0.25],
+  [0.08, Math.PI, 0.25],
+  [0, Math.PI, 0],
+  [-0.05, Math.PI, -0.2],
+  [0.12, Math.PI, -0.15],
+]
+
+function scoreFpsViewmodelRig(mount: THREE.Object3D): number {
+  mount.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(mount)
+  if (box.isEmpty()) return -Infinity
+
+  const size = box.getSize(new THREE.Vector3())
+  const depth = box.max.z - box.min.z
+  const width = Math.max(size.x, size.y)
+
+  if (box.min.z >= -0.1 || box.max.z > 0.08) return -Infinity
+
+  let score = 0
+  score += depth * 40
+  score += width * 25
+  score += -box.min.z * 20
+  score += (0.08 - Math.abs(box.max.z)) * 50
+
+  const maxDim = Math.max(size.x, size.y, size.z)
+  if (size.z < maxDim * 0.75) score -= 40
+  if (width < 0.04) score -= 60
+
+  return score
+}
+
+/** Reject end-on / behind-camera rigs that still have a technically valid bbox. */
+export function isViewmodelVisible(rig: THREE.Object3D): boolean {
+  return scoreFpsViewmodelRig(rig) > 0 && (() => {
+    rig.updateMatrixWorld(true)
+    const box = new THREE.Box3().setFromObject(rig)
+    const size = box.getSize(new THREE.Vector3())
+    const depth = box.max.z - box.min.z
+    const width = Math.max(size.x, size.y)
+    return (
+      box.min.z < -0.2 &&
+      box.max.z < 0.06 &&
+      depth > 0.25 &&
+      width > 0.06 &&
+      size.z >= Math.max(size.x, size.y) * 0.7
+    )
+  })()
+}
+
+function buildFpsViewmodelRig(gun: THREE.Object3D): THREE.Group {
+  let bestMount: THREE.Group | null = null
+  let bestScore = -Infinity
+
+  for (const [rx, ry, rz] of FPS_VIEW_ROTATIONS) {
+    const mount = new THREE.Group()
+    const orient = new THREE.Group()
+    orient.rotation.order = 'YXZ'
+    orient.rotation.set(rx, ry, rz)
+    orient.add(gun.clone(true))
+    mount.add(orient)
+    seatFpsViewmodelRig(mount, orient)
+
+    const score = scoreFpsViewmodelRig(mount)
+    if (score > bestScore) {
+      bestScore = score
+      bestMount = mount
+    }
+  }
+
+  if (!bestMount) throw new Error('Failed to orient FPS viewmodel')
+  return bestMount
 }
 
 /** MW2022 raw export: barrel +Z. Rig for FPS — geometry only, pose handled by ViewModel. */
@@ -210,18 +297,10 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
   gun.position.sub(rawBox.getCenter(new THREE.Vector3()))
   gun.scale.setScalar(0.48 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.01))
 
-  const mount = new THREE.Group()
-  const orient = new THREE.Group()
-  orient.rotation.order = 'YXZ'
-  orient.rotation.set(0.08, Math.PI, -0.25)
-  orient.add(gun)
-  mount.add(orient)
-  seatFpsViewmodelRig(mount, orient)
-
-  return mount
+  return buildFpsViewmodelRig(gun)
 }
 
-const VIEWMODEL_CACHE_VERSION = 7
+const VIEWMODEL_CACHE_VERSION = 8
 let m4ViewModelCache: Promise<THREE.Group> | null = null
 let m4ViewModelCacheVersion = 0
 
