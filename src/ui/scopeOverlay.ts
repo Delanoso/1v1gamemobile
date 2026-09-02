@@ -5,7 +5,8 @@ export interface ScopeOverlaySettings {
   /** Lower = more zoom when ADS. */
   adsFov: number
   scopeShape: ScopeShape
-  frameSizePx: number
+  frameWidthPx: number
+  frameHeightPx: number
   frameBorderPx: number
   frameRadiusPx: number
   lensInsetPx: number
@@ -25,7 +26,8 @@ export interface ScopeOverlaySettings {
 export const DEFAULT_SCOPE_OVERLAY: ScopeOverlaySettings = {
   adsFov: 50,
   scopeShape: 'square',
-  frameSizePx: 158,
+  frameWidthPx: 158,
+  frameHeightPx: 158,
   frameBorderPx: 0,
   frameRadiusPx: 0,
   lensInsetPx: 0,
@@ -42,13 +44,28 @@ export const DEFAULT_SCOPE_OVERLAY: ScopeOverlaySettings = {
   showVignette: true,
 }
 
-const STORAGE_KEY = 'frontline-scope-tune-v1'
+const STORAGE_KEY = 'frontline-scope-tune-v2'
+
+function normalizeScopeSettings(raw: Record<string, unknown>): ScopeOverlaySettings {
+  const merged = { ...DEFAULT_SCOPE_OVERLAY, ...raw } as ScopeOverlaySettings & {
+    frameSizePx?: number
+  }
+  if (raw.frameSizePx != null && raw.frameWidthPx == null) {
+    merged.frameWidthPx = raw.frameSizePx as number
+    merged.frameHeightPx = raw.frameSizePx as number
+  }
+  return merged
+}
 
 export function getScopeOverlaySettings(): ScopeOverlaySettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { ...DEFAULT_SCOPE_OVERLAY }
-    return { ...DEFAULT_SCOPE_OVERLAY, ...JSON.parse(raw) }
+    if (!raw) {
+      const legacy = localStorage.getItem('frontline-scope-tune-v1')
+      if (legacy) return normalizeScopeSettings(JSON.parse(legacy))
+      return { ...DEFAULT_SCOPE_OVERLAY }
+    }
+    return normalizeScopeSettings(JSON.parse(raw))
   } catch {
     return { ...DEFAULT_SCOPE_OVERLAY }
   }
@@ -77,13 +94,15 @@ export function applyScopeOverlay(
   const vignette = scopeOverlay.querySelector<HTMLElement>('.scope-vignette')
   if (!frame || !lens || !dot || !vignette) return
 
-  const size = settings.frameSizePx
+  const w = settings.frameWidthPx
+  const h = settings.frameHeightPx
+  const vignetteSize = Math.max(w, h)
   const round = settings.scopeShape === 'round'
   const cornerRadius = round ? '50%' : `${settings.frameRadiusPx}px`
   const lensRadius = round ? '50%' : `${Math.max(0, settings.frameRadiusPx - 1)}px`
 
-  frame.style.width = `${size}px`
-  frame.style.height = `${size}px`
+  frame.style.width = `${w}px`
+  frame.style.height = `${h}px`
   frame.style.borderWidth = `${settings.frameBorderPx}px`
   frame.style.borderRadius = cornerRadius
   frame.style.borderColor = settings.frameBorderColor
@@ -102,8 +121,8 @@ export function applyScopeOverlay(
   dot.style.boxShadow = `0 0 4px ${settings.dotColor}f2, 0 0 10px ${settings.dotColor}8c`
 
   vignette.style.display = settings.showVignette ? 'block' : 'none'
-  vignette.style.setProperty('--scope-inner', `${size * settings.vignetteInnerRatio}px`)
-  vignette.style.setProperty('--scope-outer', `${size * settings.vignetteOuterRatio}px`)
+  vignette.style.setProperty('--scope-inner', `${vignetteSize * settings.vignetteInnerRatio}px`)
+  vignette.style.setProperty('--scope-outer', `${vignetteSize * settings.vignetteOuterRatio}px`)
   vignette.style.background = `radial-gradient(
     circle at center,
     transparent 0,

@@ -80,7 +80,8 @@ type ScopeSliderSpec = {
 
 const SCOPE_SLIDERS: ScopeSliderSpec[] = [
   { key: 'adsFov', label: 'Zoom', min: 32, max: 62, step: 1 },
-  { key: 'frameSizePx', label: 'Frame', min: 60, max: 220, step: 1 },
+  { key: 'frameWidthPx', label: 'Width', min: 60, max: 280, step: 1 },
+  { key: 'frameHeightPx', label: 'Height', min: 40, max: 220, step: 1 },
   { key: 'frameBorderPx', label: 'Border', min: 0, max: 8, step: 1 },
   { key: 'frameRadiusPx', label: 'Radius', min: 0, max: 80, step: 1 },
   { key: 'lensInsetPx', label: 'Lens in', min: 0, max: 24, step: 1 },
@@ -238,7 +239,7 @@ export class ViewmodelTuneApp {
     this.vmGroup.visible = this.mode !== 'scope'
 
     if (this.mode === 'scope') {
-      hint.textContent = 'Tune scope overlay. Zoom: lower = more magnification. Square/round for different optics.'
+      hint.textContent = 'Tune scope overlay. Zoom: lower = more magnification. Width/height for frame size.'
       this.camera.fov = this.scope.adsFov
       this.copyBtn.textContent = 'Copy scope'
       this.resetBtn.textContent = 'Reset scope'
