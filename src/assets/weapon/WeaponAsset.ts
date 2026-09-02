@@ -186,7 +186,7 @@ export const VIEWMODEL_HIP = {
 
 /** ADS pose — barrel level with camera forward, optic at crosshair. */
 export const VIEWMODEL_ADS = {
-  position: new THREE.Vector3(0, 0, -0.12),
+  position: new THREE.Vector3(0, -0.09, -0.12),
   rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
 }
 
@@ -201,7 +201,7 @@ export function computeAdsAimOffset(rig: THREE.Object3D): THREE.Vector3 {
 
   const sightMeshes: THREE.Mesh[] = []
   rig.traverse((o) => {
-    if (o instanceof THREE.Mesh && meshUsesMaterial(o, ['holo', 'glass', 'ironsight'])) {
+    if (o instanceof THREE.Mesh && meshUsesMaterial(o, ['holo', 'glass'])) {
       sightMeshes.push(o)
     }
   })
@@ -212,6 +212,8 @@ export function computeAdsAimOffset(rig: THREE.Object3D): THREE.Vector3 {
     for (const mesh of sightMeshes) box.expandByObject(mesh)
     box.getCenter(aim)
     rig.worldToLocal(aim)
+    // Nudge aim below holo center so the gun sits lower in frame (COD-style).
+    aim.y += 0.045
     return aim.multiplyScalar(-1)
   }
 
