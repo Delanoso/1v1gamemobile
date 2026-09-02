@@ -31,6 +31,72 @@ function seatOnGround(group: THREE.Group): void {
   group.position.y -= box.min.y
 }
 
+/** Pull exploded mesh parts together along the weapon's long axis. */
+export function assembleExplodedParts(group: THREE.Group): void {
+  const meshes: THREE.Mesh[] = []
+  group.traverse((o) => {
+    if (o instanceof THREE.Mesh) meshes.push(o)
+  })
+  if (meshes.length <= 1) return
+
+  group.updateMatrixWorld(true)
+  const box = new THREE.Box3().setFromObject(group)
+  const size = box.getSize(new THREE.Vector3())
+  const axis: 'x' | 'y' | 'z' =
+    size.x >= size.y && size.x >= size.z ? 'x' : size.y >= size.z ? 'y' : 'z'
+
+  const items = meshes.map((mesh) => {
+    const bounds = new THREE.Box3().setFromObject(mesh)
+    return { mesh, min: bounds.min.clone(), max: bounds.max.clone() }
+  })
+  items.sort((a, b) => a.min[axis] - b.min[axis])
+
+  for (let i = 1; i < items.length; i++) {
+    const prev = items[i - 1]
+    const cur = items[i]
+    const gap = cur.min[axis] - prev.max[axis]
+    if (gap <= 0.02) continue
+    const shift = new THREE.Vector3()
+    shift[axis] = -gap
+    for (let j = i; j < items.length; j++) {
+      items[j].mesh.position.add(shift)
+      items[j].min.add(shift)
+      items[j].max.add(shift)
+    }
+  }
+}
+
+function pickStandRotation(group: THREE.Group): void {
+  const candidates = [
+    new THREE.Euler(0, 0, 0),
+    new THREE.Euler(0, Math.PI / 2, 0),
+    new THREE.Euler(0, -Math.PI / 2, 0),
+    new THREE.Euler(0, Math.PI, 0),
+    new THREE.Euler(Math.PI / 2, 0, 0),
+    new THREE.Euler(-Math.PI / 2, 0, 0),
+  ]
+
+  let best = candidates[0]
+  let bestScore = -Infinity
+
+  for (const euler of candidates) {
+    group.rotation.copy(euler)
+    group.updateMatrixWorld(true)
+    const box = new THREE.Box3().setFromObject(group)
+    const size = box.getSize(new THREE.Vector3())
+    const yIsLongest = size.y >= Math.max(size.x, size.z) * 0.92 ? 14 : 0
+    const yIsShortest = size.y <= Math.min(size.x, size.z) * 1.08 ? -14 : 0
+    const footprint = size.x * size.z
+    const score = yIsLongest + yIsShortest - footprint * 0.5
+    if (score > bestScore) {
+      bestScore = score
+      best = euler
+    }
+  }
+
+  group.rotation.copy(best)
+}
+
 function pickFlatRotation(group: THREE.Group): void {
   const candidates = [
     new THREE.Euler(0, 0, Math.PI / 2),
@@ -65,17 +131,20 @@ function pickFlatRotation(group: THREE.Group): void {
   group.rotation.copy(best)
 }
 
-export function normalizeWeaponGroup(group: THREE.Group): THREE.Group {
+export function normalizeWeaponGroup(group: THREE.Group, standing = true): THREE.Group {
   group.position.set(0, 0, 0)
   group.rotation.set(0, 0, 0)
   group.scale.set(1, 1, 1)
   group.updateMatrixWorld(true)
 
+  assembleExplodedParts(group)
+
   const box = new THREE.Box3().setFromObject(group)
   const size = box.getSize(new THREE.Vector3())
   const scale = 1 / Math.max(size.x, size.y, size.z, 0.01)
   group.scale.setScalar(scale)
-  pickFlatRotation(group)
+  if (standing) pickStandRotation(group)
+  else pickFlatRotation(group)
   seatOnGround(group)
   return group
 }

@@ -421,7 +421,7 @@ export class LabApp {
           this.studio.setAsset(result.group, 'weapon')
           this.sourceEl.textContent = 'Source: COD Ghosts GLB pack'
           this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
-          this.statusEl.textContent = `${COD_WEAPON_LABELS[index]} — from Call of Duty Ghosts weapon pack.`
+          this.statusEl.textContent = `${COD_WEAPON_LABELS[index]} — COD Ghosts pack. Rotate and review on iPad.`
           this.hintEl.innerHTML = `Drag to rotate · Turntable auto-spin · Pack file<br><code>${COD_GHOSTS_WEAPONS_GLB}</code>`
         }
       } catch {

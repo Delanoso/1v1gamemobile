@@ -11,27 +11,28 @@ export const COD_GHOSTS_WEAPONS_GLB = '/assets/weapons/call_of_duty_ghost_-_weap
 /** Gap along X (meters) that separates one weapon from the next in the source file. */
 const CLUSTER_GAP_X = 2
 
-/** Best-guess mapping from game loadout slots to pack indices (0-based, left → right in file). */
-export const COD_WEAPON_BY_VARIANT = {
-  m4a1: 4,
-  shotgun: 6,
-  svd: 8,
-  ak74: 9,
-} as const
-
+/** Weapon names from the Sketchfab COD Ghosts pack (left → right in file). */
 export const COD_WEAPON_LABELS = [
-  'Gun 1',
-  'Gun 2',
-  'Gun 3',
-  'Gun 4',
-  'Gun 5 — M4 slot',
-  'Gun 6',
-  'Gun 7 — Shotgun slot',
-  'Gun 8',
-  'Gun 9 — DMR slot',
-  'Gun 10 — AK slot',
-  'Gun 11',
+  'AK-12',
+  'ARX-160',
+  'Ameli',
+  'CBJ-MS',
+  'Honey Badger',
+  'M27-IAR',
+  'MP443',
+  'MR-28',
+  'Remington R5',
+  'SC-2010',
+  'Vector CRB',
 ] as const
+
+/** Best-guess mapping from game loadout slots to pack indices (0-based). */
+export const COD_WEAPON_BY_VARIANT = {
+  m4a1: 9,
+  shotgun: 10,
+  svd: 7,
+  ak74: 0,
+} as const
 
 let clusterPromise: Promise<THREE.Group[]> | null = null
 
