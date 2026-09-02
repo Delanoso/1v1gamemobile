@@ -266,6 +266,9 @@ export class Game {
       ads,
       this.player.moveSpeed,
       new THREE.Vector2(this.player.lookDeltaScratch.x, this.player.lookDeltaScratch.y),
+      this.player.camera,
+      window.innerWidth,
+      window.innerHeight,
     )
 
     if (this.rain) {
@@ -275,7 +278,7 @@ export class Game {
 
     for (const t of this.targets) t.update(dt)
 
-    this.hud.setAds(ads, this.viewModel.adsAmount)
+    this.hud.setAds(ads, this.viewModel.adsAmount, this.viewModel.scopeFrameSizePx)
     this.hud.setAmmo(this.weapon.ammo, this.weapon.reserve, this.weapon.reloading)
     this.hud.setHealth(this.player.health)
     this.hud.setSprinting(sprinting && this.player.moveSpeed > GAME.player.walkSpeed)

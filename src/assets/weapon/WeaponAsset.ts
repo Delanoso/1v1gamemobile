@@ -195,28 +195,61 @@ function meshUsesMaterial(mesh: THREE.Mesh, names: string[]): boolean {
   return mats.some((mat) => names.includes(mat.name))
 }
 
+function collectSightMeshes(rig: THREE.Object3D): THREE.Mesh[] {
+  const glass: THREE.Mesh[] = []
+  const holo: THREE.Mesh[] = []
+  rig.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return
+    if (meshUsesMaterial(o, ['glass'])) glass.push(o)
+    else if (meshUsesMaterial(o, ['holo'])) holo.push(o)
+  })
+  return glass.length > 0 ? glass : holo
+}
+
+/** Red-dot glass center in rig local space. */
+export function getSightLocalAimPoint(rig: THREE.Object3D, out: THREE.Vector3): boolean {
+  rig.updateMatrixWorld(true)
+  const meshes = collectSightMeshes(rig)
+  if (meshes.length === 0) return false
+
+  const box = new THREE.Box3()
+  for (const mesh of meshes) box.expandByObject(mesh)
+  box.getCenter(out)
+  rig.worldToLocal(out)
+  return true
+}
+
+/** Holo housing bounds in rig local space (for HUD frame sizing). */
+export function getSightLocalBox(rig: THREE.Object3D, out: THREE.Box3): boolean {
+  rig.updateMatrixWorld(true)
+  const meshes = collectSightMeshes(rig)
+  if (meshes.length === 0) return false
+
+  out.makeEmpty()
+  const worldBox = new THREE.Box3()
+  const corner = new THREE.Vector3()
+  for (const mesh of meshes) {
+    worldBox.setFromObject(mesh)
+    const { min, max } = worldBox
+    for (const x of [min.x, max.x]) {
+      for (const y of [min.y, max.y]) {
+        for (const z of [min.z, max.z]) {
+          corner.set(x, y, z)
+          rig.worldToLocal(corner)
+          out.expandByPoint(corner)
+        }
+      }
+    }
+  }
+  return true
+}
+
 /** Shift model so holo / red-dot glass aligns with group origin for ADS. */
 export function computeAdsAimOffset(rig: THREE.Object3D): THREE.Vector3 {
-  rig.updateMatrixWorld(true)
-
-  const sightMeshes: THREE.Mesh[] = []
-  rig.traverse((o) => {
-    if (o instanceof THREE.Mesh && meshUsesMaterial(o, ['holo', 'glass'])) {
-      sightMeshes.push(o)
-    }
-  })
-
   const aim = new THREE.Vector3()
-  if (sightMeshes.length > 0) {
-    const box = new THREE.Box3()
-    for (const mesh of sightMeshes) box.expandByObject(mesh)
-    box.getCenter(aim)
-    rig.worldToLocal(aim)
-    // Nudge aim below holo center so the gun sits lower in frame (COD-style).
-    aim.y += 0.02
-    return aim.multiplyScalar(-1)
-  }
+  if (getSightLocalAimPoint(rig, aim)) return aim.multiplyScalar(-1)
 
+  rig.updateMatrixWorld(true)
   const box = new THREE.Box3().setFromObject(rig)
   const size = box.getSize(new THREE.Vector3())
   aim.set(

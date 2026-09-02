@@ -251,11 +251,13 @@ body,
 .scope-vignette {
   position: absolute;
   inset: 0;
+  --scope-inner: 90px;
+  --scope-outer: 170px;
   background: radial-gradient(
     circle at center,
     transparent 0,
-    transparent min(18vw, 108px),
-    rgba(0, 0, 0, 0.42) min(34vw, 200px),
+    transparent var(--scope-inner),
+    rgba(0, 0, 0, 0.42) var(--scope-outer),
     rgba(0, 0, 0, 0.55) 100%
   );
 }
@@ -264,8 +266,8 @@ body,
   position: absolute;
   left: 50%;
   top: 50%;
-  width: min(36vw, 200px);
-  height: min(36vw, 200px);
+  width: 180px;
+  height: 180px;
   transform: translate(-50%, -50%);
   border: 3px solid rgba(18, 20, 22, 0.95);
   border-radius: 3px;
