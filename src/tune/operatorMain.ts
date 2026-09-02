@@ -1,6 +1,8 @@
-import { OperatorTuneApp } from './OperatorTuneApp'
+import { ViewmodelTuneApp } from './ViewmodelTuneApp'
 
-const root = document.querySelector<HTMLDivElement>('#operator-tune-root')
-if (!root) throw new Error('#operator-tune-root missing')
+const params = new URLSearchParams(window.location.search)
+if (!params.has('mode')) params.set('mode', 'operator')
+window.location.replace(`/tune.html?${params.toString()}`)
 
-new OperatorTuneApp(root)
+// Satisfy bundler if redirect is blocked
+void ViewmodelTuneApp
