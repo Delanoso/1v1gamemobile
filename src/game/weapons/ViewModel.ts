@@ -14,7 +14,7 @@ const HIP_ROT = VIEWMODEL_HIP.rotation
 const ADS_POS = VIEWMODEL_ADS.position
 const ADS_ROT = VIEWMODEL_ADS.rotation
 const GLB_LOAD_TIMEOUT_MS = 8000
-const DEFAULT_SCOPE_FRAME_PX = 132
+const DEFAULT_SCOPE_FRAME_PX = 118
 
 function disposeModel(root: THREE.Object3D): void {
   root.traverse((o) => {

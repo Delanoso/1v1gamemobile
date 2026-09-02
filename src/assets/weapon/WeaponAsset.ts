@@ -186,7 +186,7 @@ export const VIEWMODEL_HIP = {
 
 /** ADS pose — optic at crosshair; holo offset handled on model. */
 export const VIEWMODEL_ADS = {
-  position: new THREE.Vector3(0, 0, -0.12),
+  position: new THREE.Vector3(0, 0.024, -0.12),
   rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
 }
 
