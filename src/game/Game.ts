@@ -9,13 +9,14 @@ import { PostPipeline } from './rendering/PostPipeline'
 import { PlayerController } from './player/PlayerController'
 import { WeaponSystem, createMuzzleFlash } from './weapons/WeaponSystem'
 import { WeaponViewModel } from './weapons/ViewModel'
+import { OperatorBodyViewModel } from './player/OperatorBodyViewModel'
 import { RangeTarget, findRangeTarget } from './entities/RangeTarget'
 import { spawnImpact, updateImpacts } from './effects/ImpactEffects'
 import { createSkyDome } from './effects/SkyDome'
 import { RainEffect } from './effects/RainEffect'
 import { HUD } from '../ui/HUD'
 import { MainMenu, type MenuAction } from '../ui/MainMenu'
-import { buildFederationOperator } from '../assets/operator/OperatorAsset'
+import { buildFederationOperator, preloadFpsOperatorBody } from '../assets/operator/OperatorAsset'
 import {
   getRendererPixelRatio,
   shouldLoadMenuOperator,
@@ -34,6 +35,7 @@ export class Game {
   private readonly player = new PlayerController()
   private readonly weapon = new WeaponSystem()
   private readonly viewModel = new WeaponViewModel()
+  private readonly operatorBody = new OperatorBodyViewModel()
   private readonly hud: HUD
   private readonly menu: MainMenu
   private readonly touch: TouchControls
@@ -94,6 +96,7 @@ export class Game {
     weaponLight.position.set(0.15, 0.05, -0.15)
     this.player.camera.add(weaponLight)
 
+    this.player.camera.add(this.operatorBody.group)
     this.player.camera.add(this.viewModel.group)
     this.scene.add(this.player.camera)
 
@@ -118,6 +121,7 @@ export class Game {
     this.onResize()
 
     this.buildWorld()
+    void preloadFpsOperatorBody()
     this.running = true
     this.loop()
   }
@@ -188,6 +192,7 @@ export class Game {
   private enterPlay(): void {
     this.phase = 'play'
     if (this.operator) this.operator.visible = false
+    this.operatorBody.setVisible(true)
     this.menu.setVisible(false)
     this.hud.setVisible(true)
     this.touch.setVisible(true)
@@ -277,6 +282,14 @@ export class Game {
       ads,
       this.player.moveSpeed,
       new THREE.Vector2(this.player.lookDeltaScratch.x, this.player.lookDeltaScratch.y),
+    )
+
+    this.operatorBody.update(
+      dt,
+      ads,
+      this.player.moveSpeed,
+      new THREE.Vector2(this.player.lookDeltaScratch.x, this.player.lookDeltaScratch.y),
+      this.viewModel.viewKick,
     )
 
     if (this.rain) {

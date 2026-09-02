@@ -57,6 +57,10 @@ export class WeaponViewModel {
     return this.scopeFramePx
   }
 
+  get viewKick(): number {
+    return this.kick
+  }
+
   private replaceModel(next: THREE.Group): void {
     this.group.remove(this.model)
     disposeModel(this.model)
