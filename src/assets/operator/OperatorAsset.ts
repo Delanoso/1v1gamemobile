@@ -40,10 +40,19 @@ function prepareFpsOperatorBody(root: THREE.Object3D): void {
  * FPS body pose — chest and arms sit behind the viewmodel weapon.
  * Camera looks down -Z; weapon is near z≈0, torso is further forward (more negative z).
  */
-export const FPS_OPERATOR_HOLD = {
+export const FPS_OPERATOR_HIP = {
   position: new THREE.Vector3(0, -1.02, -0.42),
   rotation: new THREE.Euler(-0.08, 0, 0, 'YXZ'),
 }
+
+/** ADS operator offset — tune via /operator-tune.html */
+export const FPS_OPERATOR_ADS = {
+  position: new THREE.Vector3(0, -1.02, -0.42),
+  rotation: new THREE.Euler(-0.08, 0, 0, 'YXZ'),
+}
+
+/** @deprecated Use FPS_OPERATOR_HIP */
+export const FPS_OPERATOR_HOLD = FPS_OPERATOR_HIP
 
 async function loadFederationTemplate(): Promise<THREE.Group> {
   const { group } = await loadGlbModel(FEDERATION_OPERATOR_GLB, 'character')

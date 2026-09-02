@@ -13,6 +13,7 @@ export default defineConfig({
         main: 'index.html',
         lab: 'lab.html',
         tune: 'tune.html',
+        operatorTune: 'operator-tune.html',
       },
     },
   },

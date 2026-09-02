@@ -1,11 +1,9 @@
 import * as THREE from 'three'
-import { FPS_OPERATOR_HOLD, preloadFpsOperatorBody } from '../../assets/operator/OperatorAsset'
-import { VIEWMODEL_ADS, VIEWMODEL_HIP } from '../../assets/weapon/WeaponAsset'
-
-const HIP_POS = VIEWMODEL_HIP.position
-const HIP_ROT = VIEWMODEL_HIP.rotation
-const ADS_POS = VIEWMODEL_ADS.position
-const ADS_ROT = VIEWMODEL_ADS.rotation
+import {
+  FPS_OPERATOR_ADS,
+  FPS_OPERATOR_HIP,
+  preloadFpsOperatorBody,
+} from '../../assets/operator/OperatorAsset'
 
 /** Federation torso/arms rendered behind the FPS weapon. */
 export class OperatorBodyViewModel {
@@ -54,21 +52,20 @@ export class OperatorBodyViewModel {
     const rotSway = 1 - adsLock
     const kickScale = 1 - this.adsBlend * 0.6
 
-    this.tmpPos.lerpVectors(HIP_POS, ADS_POS, this.adsBlend)
-    this.tmpEuler.x = THREE.MathUtils.lerp(HIP_ROT.x, ADS_ROT.x, this.adsBlend)
-    this.tmpEuler.y = THREE.MathUtils.lerp(HIP_ROT.y, ADS_ROT.y, this.adsBlend)
-    this.tmpEuler.z = THREE.MathUtils.lerp(HIP_ROT.z, ADS_ROT.z, this.adsBlend)
+    this.tmpPos.lerpVectors(FPS_OPERATOR_HIP.position, FPS_OPERATOR_ADS.position, this.adsBlend)
+    this.tmpEuler.x = THREE.MathUtils.lerp(FPS_OPERATOR_HIP.rotation.x, FPS_OPERATOR_ADS.rotation.x, this.adsBlend)
+    this.tmpEuler.y = THREE.MathUtils.lerp(FPS_OPERATOR_HIP.rotation.y, FPS_OPERATOR_ADS.rotation.y, this.adsBlend)
+    this.tmpEuler.z = THREE.MathUtils.lerp(FPS_OPERATOR_HIP.rotation.z, FPS_OPERATOR_ADS.rotation.z, this.adsBlend)
 
-    const hold = FPS_OPERATOR_HOLD
     this.group.position.set(
-      hold.position.x + this.tmpPos.x * 0.35 + this.sway.x * posSway,
-      hold.position.y + this.tmpPos.y * 0.25 + this.sway.y * posSway + bob,
-      hold.position.z + this.tmpPos.z * 0.4 - kick * 0.12 * kickScale,
+      this.tmpPos.x + this.sway.x * posSway,
+      this.tmpPos.y + this.sway.y * posSway + bob,
+      this.tmpPos.z - kick * 0.12 * kickScale,
     )
     this.group.rotation.set(
-      hold.rotation.x + this.tmpEuler.x * 0.45 + kick * 0.35 * kickScale * rotSway,
-      hold.rotation.y + this.tmpEuler.y * 0.2,
-      hold.rotation.z + this.tmpEuler.z * 0.45 + this.sway.y * 0.15 * rotSway,
+      this.tmpEuler.x + kick * 0.35 * kickScale * rotSway,
+      this.tmpEuler.y,
+      this.tmpEuler.z + this.sway.y * 0.15 * rotSway,
     )
   }
 
