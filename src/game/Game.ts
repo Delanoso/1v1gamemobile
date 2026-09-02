@@ -82,7 +82,7 @@ export class Game {
 
     this.muzzle = createMuzzleFlash()
     this.player.camera.add(this.muzzle)
-    this.muzzle.position.set(0.18, -0.14, -0.45)
+    this.muzzle.position.set(0.12, -0.12, -0.42)
 
     const weaponLight = new THREE.PointLight(0xfff4e8, 1.4, 2.5)
     weaponLight.position.set(0.15, 0.05, -0.15)

@@ -209,15 +209,13 @@ export class TouchControls {
       if (key === 'fire') return
 
       if (key === 'ads') {
-        btn.addEventListener(
-          'touchstart',
-          (e) => {
-            e.preventDefault()
-            const on = this.input.toggleTouchAds()
-            btn.classList.toggle('active', on)
-          },
-          { passive: false },
-        )
+        const toggle = (e: Event) => {
+          e.preventDefault()
+          const on = this.input.toggleTouchAds()
+          btn.classList.toggle('active', on)
+        }
+        btn.addEventListener('touchstart', toggle, { passive: false })
+        btn.addEventListener('click', toggle)
         return
       }
 

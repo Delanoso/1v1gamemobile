@@ -176,7 +176,7 @@ export function buildViewModelGroup(variant: WeaponVariant = 'm4a1'): THREE.Grou
   return vm
 }
 
-/** MW2022 raw export: barrel +Z. Orient for FPS with barrel along -Z. */
+/** MW2022 raw export: barrel +Z. Rig for FPS — geometry only, pose handled by ViewModel. */
 export async function buildImportedViewModel(): Promise<THREE.Group> {
   const entry = IMPORTED_WEAPONS.find((w) => w.id === 'm4-tan')
   if (!entry) throw new Error('Unknown imported weapon: m4-tan')
@@ -197,18 +197,32 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
   const rawBox = new THREE.Box3().setFromObject(gun)
   const rawSize = rawBox.getSize(new THREE.Vector3())
   gun.position.sub(rawBox.getCenter(new THREE.Vector3()))
-  gun.scale.setScalar(0.38 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.01))
+  gun.scale.setScalar(0.48 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.01))
 
   const rig = new THREE.Group()
-  rig.rotation.set(0.06, Math.PI, 0)
   rig.add(gun)
+  rig.rotation.order = 'YXZ'
+  // Barrel +Z → -Z. Roll receiver toward camera (COD-style lower-right profile).
+  rig.rotation.set(0.06, Math.PI, -0.28)
   rig.updateMatrixWorld(true)
 
-  const center = new THREE.Box3().setFromObject(gun).getCenter(new THREE.Vector3())
-  gun.position.sub(center)
+  let bounds = new THREE.Box3().setFromObject(rig)
+  // Anchor grip at rig origin; muzzle extends into -Z (in front of camera).
+  gun.position.x -= bounds.getCenter(new THREE.Vector3()).x
+  gun.position.y -= bounds.min.y
+  gun.position.z -= bounds.max.z
 
-  // Match procedural viewmodel mount point.
-  rig.position.set(0.14, -0.15, -0.35)
+  rig.updateMatrixWorld(true)
+  bounds = new THREE.Box3().setFromObject(rig)
+  if (bounds.min.z > -0.05) {
+    rig.rotation.y += Math.PI
+    gun.position.set(0, 0, 0)
+    rig.updateMatrixWorld(true)
+    bounds = new THREE.Box3().setFromObject(rig)
+    gun.position.x -= bounds.getCenter(new THREE.Vector3()).x
+    gun.position.y -= bounds.min.y
+    gun.position.z -= bounds.max.z
+  }
 
   return rig
 }
