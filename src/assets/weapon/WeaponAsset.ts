@@ -188,6 +188,8 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
     if (o instanceof THREE.Mesh) {
       o.castShadow = true
       o.receiveShadow = true
+      o.frustumCulled = false
+      o.renderOrder = 10
     }
   })
 
@@ -195,24 +197,28 @@ export async function buildImportedViewModel(): Promise<THREE.Group> {
   const rawBox = new THREE.Box3().setFromObject(gun)
   const rawSize = rawBox.getSize(new THREE.Vector3())
   gun.position.sub(rawBox.getCenter(new THREE.Vector3()))
-  gun.scale.setScalar(0.35 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.01))
+  gun.scale.setScalar(0.38 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.01))
 
-  const mount = new THREE.Group()
-  mount.add(gun)
-  mount.rotation.set(0.08, Math.PI, 0)
-  mount.updateMatrixWorld(true)
+  const rig = new THREE.Group()
+  rig.rotation.set(0.06, Math.PI, 0)
+  rig.add(gun)
+  rig.updateMatrixWorld(true)
 
-  const box = new THREE.Box3().setFromObject(mount)
-  gun.position.sub(box.getCenter(new THREE.Vector3()))
+  const center = new THREE.Box3().setFromObject(gun).getCenter(new THREE.Vector3())
+  gun.position.sub(center)
 
-  mount.traverse((o) => {
-    if (o instanceof THREE.Mesh) {
-      o.frustumCulled = false
-      o.renderOrder = 10
-    }
-  })
+  // Match procedural viewmodel mount point.
+  rig.position.set(0.14, -0.15, -0.35)
 
-  return mount
+  return rig
+}
+
+let m4ViewModelCache: Promise<THREE.Group> | null = null
+
+/** Start loading the M4 viewmodel early (menu screen). */
+export function preloadM4ViewModel(): Promise<THREE.Group> {
+  if (!m4ViewModelCache) m4ViewModelCache = buildImportedViewModel()
+  return m4ViewModelCache
 }
 
 export async function buildWeapon(variant: WeaponVariant = 'm4a1'): Promise<WeaponBuildResult> {

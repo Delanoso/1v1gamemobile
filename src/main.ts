@@ -1,4 +1,5 @@
 import './style.css'
+import { preloadM4ViewModel } from './assets/weapon/WeaponAsset'
 import { Game } from './game/Game'
 
 const app = document.querySelector<HTMLDivElement>('#app')
@@ -11,4 +12,5 @@ document.addEventListener(
   { passive: false },
 )
 
+void preloadM4ViewModel()
 new Game(app)

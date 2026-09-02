@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { GAME } from '../../config/gameConfig'
-import { buildImportedViewModel, buildViewModelGroup } from '../../assets/weapon/WeaponAsset'
+import { buildViewModelGroup, preloadM4ViewModel } from '../../assets/weapon/WeaponAsset'
 
 /** First-person weapon mesh with recoil animation. */
 export class WeaponViewModel {
@@ -11,24 +11,21 @@ export class WeaponViewModel {
   private sway = new THREE.Vector2()
 
   constructor() {
-    this.model = new THREE.Group()
+    this.model = buildViewModelGroup('m4a1')
+    this.modelBasePos.copy(this.model.position)
     this.group.add(this.model)
     void this.loadM4Tan()
   }
 
   private async loadM4Tan(): Promise<void> {
     try {
-      const glbModel = await buildImportedViewModel()
+      const glbModel = await preloadM4ViewModel()
       this.group.remove(this.model)
       this.model = glbModel
-      this.modelBasePos.set(0, 0, 0)
+      this.modelBasePos.copy(this.model.position)
       this.group.add(this.model)
     } catch (err) {
       console.warn('M4 Tan viewmodel unavailable, using procedural fallback', err)
-      this.group.remove(this.model)
-      this.model = buildViewModelGroup('m4a1')
-      this.modelBasePos.set(0.14, -0.15, -0.08)
-      this.group.add(this.model)
     }
   }
 
