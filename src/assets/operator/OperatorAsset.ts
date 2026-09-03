@@ -68,21 +68,24 @@ function prepareFpsOperatorBody(root: THREE.Group): void {
 
   recenterVisibleContent(root)
   // Character-space gloves are huge; shrink to viewmodel hand size.
-  root.scale.setScalar(0.38)
+  root.scale.setScalar(FPS_OPERATOR_SCALE)
 }
+
+/** Uniform scale for FPS gloves relative to character-normalized size. */
+export const FPS_OPERATOR_SCALE = 0.12
 
 /**
  * Hands near the M4 grips — torso/vest never drawn.
  * Fine-tune via /tune.html → OPERATOR (OP HIP / OP ADS).
  */
 export const FPS_OPERATOR_HIP = {
-  position: new THREE.Vector3(0.2, -0.34, -0.1),
-  rotation: new THREE.Euler(0.85, 0.25, -0.55, 'YXZ'),
+  position: new THREE.Vector3(0.149, -0.36, 0.4),
+  rotation: new THREE.Euler(0.384, 0.126, 1.12, 'YXZ'),
 }
 
 export const FPS_OPERATOR_ADS = {
-  position: new THREE.Vector3(0.1, -0.28, -0.16),
-  rotation: new THREE.Euler(0.95, 0.12, -0.35, 'YXZ'),
+  position: new THREE.Vector3(0.08, -0.3, 0.35),
+  rotation: new THREE.Euler(0.45, 0.1, 0.9, 'YXZ'),
 }
 
 /** @deprecated Use FPS_OPERATOR_HIP */

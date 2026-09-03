@@ -4,6 +4,7 @@ import { GAME } from '../config/gameConfig'
 import {
   FPS_OPERATOR_ADS,
   FPS_OPERATOR_HIP,
+  FPS_OPERATOR_SCALE,
   preloadFpsOperatorBody,
   updateFpsOperatorClipPlanes,
 } from '../assets/operator/OperatorAsset'
@@ -33,7 +34,7 @@ interface Pose {
 }
 
 const POSE_STORAGE_KEY = 'frontline-vm-tune-v1'
-const OPERATOR_STORAGE_KEY = 'frontline-operator-tune-v8'
+const OPERATOR_STORAGE_KEY = 'frontline-operator-tune-v9'
 const DRAG_SENS = 0.00055
 const OPERATOR_DRAG_SENS = 0.00085
 
@@ -79,39 +80,48 @@ function savePoses(hip: Pose, ads: Pose): void {
   localStorage.setItem(POSE_STORAGE_KEY, JSON.stringify({ hip: pack(hip), ads: pack(ads) }))
 }
 
-function operatorPoseToCode(name: string, pose: Pose): string {
+function operatorPoseToCode(name: string, pose: Pose, scale: number): string {
   const p = pose.position
   const r = pose.rotation
   return `export const FPS_OPERATOR_${name} = {
   position: new THREE.Vector3(${p.x.toFixed(3)}, ${p.y.toFixed(3)}, ${p.z.toFixed(3)}),
   rotation: new THREE.Euler(${r.x.toFixed(3)}, ${r.y.toFixed(3)}, ${r.z.toFixed(3)}, 'YXZ'),
-}`
+}
+// scale: ${scale.toFixed(3)}  →  FPS_OPERATOR_SCALE = ${scale.toFixed(3)}`
 }
 
-function loadSavedOperatorPoses(): { hip: Pose; ads: Pose } | null {
+function loadSavedOperatorPoses(): { hip: Pose; ads: Pose; scale: number } | null {
   try {
     const raw = localStorage.getItem(OPERATOR_STORAGE_KEY)
     if (!raw) return null
     const data = JSON.parse(raw) as {
       hip: { position: number[]; rotation: number[] }
       ads: { position: number[]; rotation: number[] }
+      scale?: number
     }
     const toPose = (entry: { position: number[]; rotation: number[] }): Pose => ({
       position: new THREE.Vector3(entry.position[0], entry.position[1], entry.position[2]),
       rotation: new THREE.Euler(entry.rotation[0], entry.rotation[1], entry.rotation[2], 'YXZ'),
     })
-    return { hip: toPose(data.hip), ads: toPose(data.ads) }
+    return {
+      hip: toPose(data.hip),
+      ads: toPose(data.ads),
+      scale: typeof data.scale === 'number' ? data.scale : FPS_OPERATOR_SCALE,
+    }
   } catch {
     return null
   }
 }
 
-function saveOperatorPoses(hip: Pose, ads: Pose): void {
+function saveOperatorPoses(hip: Pose, ads: Pose, scale: number): void {
   const pack = (pose: Pose) => ({
     position: pose.position.toArray(),
     rotation: [pose.rotation.x, pose.rotation.y, pose.rotation.z],
   })
-  localStorage.setItem(OPERATOR_STORAGE_KEY, JSON.stringify({ hip: pack(hip), ads: pack(ads) }))
+  localStorage.setItem(
+    OPERATOR_STORAGE_KEY,
+    JSON.stringify({ hip: pack(hip), ads: pack(ads), scale }),
+  )
 }
 
 function initialTuneMode(): TuneMode {
@@ -163,6 +173,7 @@ export class ViewmodelTuneApp {
   private model: THREE.Group
   private operatorBody: THREE.Group | null = null
   private operatorReady = false
+  private operatorScale = FPS_OPERATOR_SCALE
   private adsAimOffset = new THREE.Vector3()
   private readonly hip: Pose
   private readonly ads: Pose
@@ -183,6 +194,7 @@ export class ViewmodelTuneApp {
     const savedOperator = loadSavedOperatorPoses()
     this.operatorHip = savedOperator?.hip ?? clonePose(FPS_OPERATOR_HIP)
     this.operatorAds = savedOperator?.ads ?? clonePose(FPS_OPERATOR_ADS)
+    this.operatorScale = savedOperator?.scale ?? FPS_OPERATOR_SCALE
     this.scope = getScopeOverlaySettings()
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
@@ -378,7 +390,11 @@ export class ViewmodelTuneApp {
       const opPose = this.activePose()
       this.operatorGroup.position.copy(opPose.position)
       this.operatorGroup.rotation.copy(opPose.rotation)
-      saveOperatorPoses(this.operatorHip, this.operatorAds)
+      if (this.operatorBody) {
+        // Template already has FPS_OPERATOR_SCALE baked in — apply relative to that.
+        this.operatorBody.scale.setScalar(this.operatorScale / FPS_OPERATOR_SCALE)
+      }
+      saveOperatorPoses(this.operatorHip, this.operatorAds, this.operatorScale)
     } else if (this.mode !== 'scope') {
       const pose = this.activePose()
       this.vmGroup.position.copy(pose.position)
@@ -413,9 +429,10 @@ export class ViewmodelTuneApp {
   private buildPoseSliders(operator = false): void {
     const axes = operator
       ? ([
+          { key: 'scale', label: 'Scale', min: 0.04, max: 0.35, step: 0.001, pose: 'scale', axis: 'x' },
           { key: 'px', label: 'Pos X', min: -0.6, max: 0.6, step: 0.001, pose: 'position', axis: 'x' },
           { key: 'py', label: 'Pos Y', min: -0.8, max: 0.4, step: 0.001, pose: 'position', axis: 'y' },
-          { key: 'pz', label: 'Pos Z', min: -0.6, max: 0.4, step: 0.001, pose: 'position', axis: 'z' },
+          { key: 'pz', label: 'Pos Z', min: -0.6, max: 0.6, step: 0.001, pose: 'position', axis: 'z' },
           { key: 'rx', label: 'Rot X', min: -1.2, max: 1.2, step: 0.001, pose: 'rotation', axis: 'x' },
           { key: 'ry', label: 'Rot Y', min: -3.14, max: 3.14, step: 0.001, pose: 'rotation', axis: 'y' },
           { key: 'rz', label: 'Rot Z', min: -1.2, max: 1.2, step: 0.001, pose: 'rotation', axis: 'z' },
@@ -440,9 +457,14 @@ export class ViewmodelTuneApp {
       `
       const input = row.querySelector('input')!
       input.addEventListener('input', () => {
-        const pose = this.activePose()
-        const target = spec.pose === 'position' ? pose.position : pose.rotation
-        target[spec.axis] = parseFloat(input.value)
+        const v = parseFloat(input.value)
+        if (spec.pose === 'scale') {
+          this.operatorScale = v
+        } else {
+          const pose = this.activePose()
+          const target = spec.pose === 'position' ? pose.position : pose.rotation
+          target[spec.axis] = v
+        }
         this.applyAll()
       })
       this.sliderContainer.appendChild(row)
@@ -528,6 +550,7 @@ export class ViewmodelTuneApp {
 
     const pose = this.activePose()
     const map: Record<string, number> = {
+      scale: this.operatorScale,
       px: pose.position.x,
       py: pose.position.y,
       pz: pose.position.z,
@@ -537,6 +560,7 @@ export class ViewmodelTuneApp {
     }
     this.sliderContainer.querySelectorAll<HTMLElement>('.tune-row').forEach((row) => {
       const key = row.dataset.key!
+      if (!(key in map)) return
       const input = row.querySelector('input') as HTMLInputElement
       const val = row.querySelector('.val')!
       input.value = String(map[key])
@@ -550,7 +574,7 @@ export class ViewmodelTuneApp {
       return
     }
     if (this.mode === 'operator') {
-      this.outputEl.textContent = `${operatorPoseToCode('HIP', this.operatorHip)}\n\n${operatorPoseToCode('ADS', this.operatorAds)}`
+      this.outputEl.textContent = `${operatorPoseToCode('HIP', this.operatorHip, this.operatorScale)}\n\n${operatorPoseToCode('ADS', this.operatorAds, this.operatorScale)}`
       return
     }
     this.outputEl.textContent = `${poseToCode('HIP', this.hip)}\n\n${poseToCode('ADS', this.ads)}`
@@ -568,6 +592,7 @@ export class ViewmodelTuneApp {
       const pose = this.activePose()
       pose.position.copy(defaults.position)
       pose.rotation.copy(defaults.rotation)
+      this.operatorScale = FPS_OPERATOR_SCALE
       this.applyAll()
       this.toast('Reset operator pose to code defaults')
       return
@@ -585,7 +610,7 @@ export class ViewmodelTuneApp {
       this.mode === 'scope'
         ? scopeSettingsToCode(this.scope)
         : this.mode === 'operator'
-          ? `${operatorPoseToCode('HIP', this.operatorHip)}\n\n${operatorPoseToCode('ADS', this.operatorAds)}`
+          ? `${operatorPoseToCode('HIP', this.operatorHip, this.operatorScale)}\n\n${operatorPoseToCode('ADS', this.operatorAds, this.operatorScale)}`
           : `${poseToCode('HIP', this.hip)}\n\n${poseToCode('ADS', this.ads)}`
     try {
       await navigator.clipboard.writeText(text)
