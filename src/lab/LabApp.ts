@@ -1,0 +1,453 @@
+import './lab.css'
+import * as THREE from 'three'
+import { StudioScene } from './StudioScene'
+import { buildContainer } from '../assets/container/ContainerAsset'
+import { buildFloor } from '../assets/floor/FloorAsset'
+import { buildFence } from '../assets/fence/FenceAsset'
+import { buildBarrel, type BarrelVariant } from '../assets/barrel/BarrelAsset'
+import { buildCrate, type CrateVariant } from '../assets/crate/CrateAsset'
+import { buildPallet, type PalletVariant } from '../assets/pallet/PalletAsset'
+import { buildWeapon, type WeaponVariant } from '../assets/weapon/WeaponAsset'
+import { buildCodGhostsWeapon, COD_GHOSTS_WEAPONS_GLB, COD_WEAPON_LABELS } from '../assets/weapon/CodGhostsWeaponPack'
+import { buildImportedWeapon, IMPORTED_WEAPONS, type ImportedWeaponId } from '../assets/weapon/ImportedWeaponPack'
+import { buildFederationOperator, FEDERATION_OPERATOR_GLB } from '../assets/operator/OperatorAsset'
+import type { ContainerColor } from '../game/materials/MapMaterials'
+
+export type LabAsset = 'container' | 'floor' | 'fence' | 'barrel' | 'crate' | 'pallet' | 'weapon' | 'operator'
+
+type WeaponPickerId = `imported:${ImportedWeaponId}` | `cod:${number}`
+
+const ASSET_LABELS: Record<LabAsset, string> = {
+  container: 'Shipping Container',
+  floor: 'Concrete Floor',
+  fence: 'Chain-link Fence',
+  barrel: 'Barrel',
+  crate: 'Crate',
+  pallet: 'Pallet',
+  weapon: 'Weapon',
+  operator: 'Operator',
+}
+
+const GLB_HINTS: Partial<Record<LabAsset, string>> = {
+  container: 'public/assets/maps/container-yard/container.glb',
+  floor: 'public/assets/maps/container-yard/floor.glb',
+  fence: 'public/assets/maps/container-yard/fence.glb',
+  barrel:
+    'public/assets/maps/container-yard/barrel-metal.glb · barrel-hazard-green.glb · barrel-hazard-yellow.glb · barrel-wood.glb',
+  crate:
+    'public/assets/maps/container-yard/crate-small.glb · crate-medium.glb · crate-large.glb · crate-long.glb · crate-flat.glb',
+  pallet:
+    'public/assets/maps/container-yard/pallet-standard.glb · pallet-double.glb · pallet-plastic.glb',
+  weapon: 'public/assets/weapons/ — M4 · Fennec · Kimber · Renetti · COD Ghosts pack',
+  operator: 'public/assets/weapons/federation.glb',
+}
+
+export class LabApp {
+  private readonly studio: StudioScene
+  private readonly panel: HTMLElement
+  private readonly statusEl: HTMLElement
+  private readonly trisEl: HTMLElement
+  private readonly sourceEl: HTMLElement
+  private readonly hintEl: HTMLElement
+  private asset: LabAsset = 'weapon'
+  private containerColor: ContainerColor = 'red'
+  private barrelVariant: BarrelVariant = 'metal-dark'
+  private crateVariant: CrateVariant = 'medium'
+  private palletVariant: PalletVariant = 'standard'
+  private weaponVariant: WeaponVariant = 'shotgun'
+  private weaponPicker: WeaponPickerId = 'imported:m4-tan'
+  private colorRow: HTMLElement | null = null
+  private clock = new THREE.Clock()
+
+  constructor(host: HTMLElement) {
+    host.className = 'lab-host'
+    this.studio = new StudioScene(host)
+
+    this.panel = document.createElement('div')
+    this.panel.className = 'lab-panel'
+    this.panel.innerHTML = `
+      <p class="lab-eyebrow">ASSET LAB</p>
+      <h1 id="lab-title">Crate</h1>
+      <p class="lab-sub">Polish one asset to 100% before it goes in the game.</p>
+      <div class="lab-tabs" id="lab-tabs"></div>
+      <div class="lab-meta">
+        <span id="lab-source">Source: …</span>
+        <span id="lab-tris">Tris: …</span>
+      </div>
+      <p class="lab-status" id="lab-status">Loading…</p>
+      <div class="lab-actions">
+        <button type="button" id="lab-reset">Reset view</button>
+        <button type="button" id="lab-reload">Reload asset</button>
+      </div>
+      <p class="lab-hint" id="lab-hint">Drag to rotate · Turntable auto-spin</p>
+    `
+    host.appendChild(this.panel)
+
+    this.statusEl = this.panel.querySelector('#lab-status')!
+    this.trisEl = this.panel.querySelector('#lab-tris')!
+    this.sourceEl = this.panel.querySelector('#lab-source')!
+    this.hintEl = this.panel.querySelector('#lab-hint')!
+    this.buildTabs()
+
+    const params = new URLSearchParams(window.location.search)
+    const a = params.get('asset') as LabAsset | null
+    if (a && a in ASSET_LABELS) this.asset = a
+
+    this.panel.querySelector('#lab-reset')!.addEventListener('click', () =>
+      this.studio.resetView(
+        this.asset === 'floor' ? 'ground' : this.asset === 'weapon' ? 'weapon' : 'prop',
+      ),
+    )
+    this.panel.querySelector('#lab-reload')!.addEventListener('click', () => void this.loadAsset())
+
+    this.syncColorSwatches()
+    void this.loadAsset()
+    this.loop()
+  }
+
+  private buildTabs(): void {
+    const tabs = this.panel.querySelector('#lab-tabs')!
+    ;(Object.keys(ASSET_LABELS) as LabAsset[]).forEach((key) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.textContent = ASSET_LABELS[key]
+      btn.className = key === this.asset ? 'active' : ''
+      btn.addEventListener('click', () => {
+        this.asset = key
+        tabs.querySelectorAll('button').forEach((b) => b.classList.remove('active'))
+        btn.classList.add('active')
+        this.syncColorSwatches()
+        void this.loadAsset()
+      })
+      tabs.appendChild(btn)
+    })
+  }
+
+  private syncColorSwatches(): void {
+    this.colorRow?.remove()
+    this.colorRow = null
+
+    if (this.asset === 'container') {
+      const row = document.createElement('div')
+      row.className = 'lab-colors'
+      const colors: ContainerColor[] = ['red', 'blue', 'green', 'tan']
+      const labels = { red: 'Red', blue: 'Blue', green: 'Green', tan: 'Tan' }
+      colors.forEach((c) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = labels[c]
+        b.className = `swatch swatch-${c}${c === this.containerColor ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.containerColor = c
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
+      })
+      this.panel.querySelector('.lab-actions')!.before(row)
+      this.colorRow = row
+      return
+    }
+
+    if (this.asset === 'barrel') {
+      const row = document.createElement('div')
+      row.className = 'lab-colors lab-colors-wrap'
+      const variants: BarrelVariant[] = ['metal-dark', 'metal-green', 'metal-yellow', 'wood']
+      const labels: Record<BarrelVariant, string> = {
+        'metal-dark': 'Metal',
+        'metal-green': 'Hazard Green',
+        'metal-yellow': 'Hazard Yellow',
+        wood: 'Wood',
+      }
+      variants.forEach((v) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = labels[v]
+        b.className = `swatch swatch-${v}${v === this.barrelVariant ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.barrelVariant = v
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
+      })
+      this.panel.querySelector('.lab-actions')!.before(row)
+      this.colorRow = row
+      return
+    }
+
+    if (this.asset === 'crate') {
+      const row = document.createElement('div')
+      row.className = 'lab-colors lab-colors-wrap'
+      const variants: CrateVariant[] = ['small', 'medium', 'large', 'long', 'flat']
+      const labels: Record<CrateVariant, string> = {
+        small: 'Small',
+        medium: 'Medium',
+        large: 'Large',
+        long: 'Long',
+        flat: 'Flat',
+      }
+      variants.forEach((v) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = labels[v]
+        b.className = `swatch swatch-crate-${v}${v === this.crateVariant ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.crateVariant = v
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
+      })
+      this.panel.querySelector('.lab-actions')!.before(row)
+      this.colorRow = row
+      return
+    }
+
+    if (this.asset === 'pallet') {
+      const row = document.createElement('div')
+      row.className = 'lab-colors lab-colors-wrap'
+      const variants: PalletVariant[] = ['standard', 'double', 'plastic']
+      const labels: Record<PalletVariant, string> = {
+        standard: 'Wood',
+        double: 'Stacked',
+        plastic: 'Plastic',
+      }
+      variants.forEach((v) => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = labels[v]
+        b.className = `swatch swatch-pallet-${v}${v === this.palletVariant ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.palletVariant = v
+          row.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        row.appendChild(b)
+      })
+      this.panel.querySelector('.lab-actions')!.before(row)
+      this.colorRow = row
+      return
+    }
+
+    if (this.asset === 'weapon') {
+      const wrap = document.createElement('div')
+      wrap.className = 'lab-weapon-pickers'
+
+      const addSection = (title: string, className: string) => {
+        const heading = document.createElement('p')
+        heading.className = 'lab-picker-label'
+        heading.textContent = title
+        wrap.appendChild(heading)
+        const row = document.createElement('div')
+        row.className = `lab-colors lab-colors-wrap ${className}`
+        wrap.appendChild(row)
+        return row
+      }
+
+      const importedRow = addSection('MW2022 GLBs (4 files)', 'lab-imported-weapons')
+      for (const weapon of IMPORTED_WEAPONS) {
+        const id = `imported:${weapon.id}` as WeaponPickerId
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = weapon.label
+        b.className = `swatch swatch-weapon-imported${id === this.weaponPicker ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.weaponPicker = id
+          wrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        importedRow.appendChild(b)
+      }
+
+      const codRow = addSection('COD Ghosts pack — 11 guns (yesterday)', 'lab-cod-weapons')
+      COD_WEAPON_LABELS.forEach((label, index) => {
+        const id = `cod:${index}` as WeaponPickerId
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.textContent = label
+        b.className = `swatch swatch-weapon-cod${id === this.weaponPicker ? ' active' : ''}`
+        b.addEventListener('click', () => {
+          this.weaponPicker = id
+          wrap.querySelectorAll('button').forEach((x) => x.classList.remove('active'))
+          b.classList.add('active')
+          void this.loadAsset()
+        })
+        codRow.appendChild(b)
+      })
+
+      this.panel.querySelector('.lab-actions')!.before(wrap)
+      this.colorRow = wrap
+    }
+  }
+
+  private async loadAsset(): Promise<void> {
+    const title = this.panel.querySelector('#lab-title')!
+    title.textContent = ASSET_LABELS[this.asset]
+    this.statusEl.textContent = 'Loading…'
+
+    const glbPath = GLB_HINTS[this.asset]
+    this.hintEl.innerHTML = glbPath
+      ? `Drag to rotate · Turntable auto-spin · Drop GLB at<br><code>${glbPath}</code>`
+      : 'Drag to rotate · Turntable auto-spin'
+
+    if (this.asset === 'container') {
+      const result = await buildContainer(this.containerColor)
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? 'Using imported GLB — rotate and review on iPad.'
+          : 'Procedural v3 — large square corrugation (225 mm pitch, trapezoid ribs).'
+      return
+    }
+
+    if (this.asset === 'floor') {
+      const result = await buildFloor()
+      this.studio.setAsset(result.group, 'ground')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? 'Using imported floor GLB — check joints, stains, and wear.'
+          : 'Procedural v3 — poured concrete slab with control joints and yard wear.'
+      return
+    }
+
+    if (this.asset === 'fence') {
+      const result = await buildFence()
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? 'Using imported fence GLB — check mesh transparency and post alignment.'
+          : 'Procedural v2 — galvanized posts, chain mesh, Y-brackets, concertina razor wire.'
+      return
+    }
+
+    if (this.asset === 'barrel') {
+      const result = await buildBarrel(this.barrelVariant)
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      const variantLabels: Record<BarrelVariant, string> = {
+        'metal-dark': 'dark metal drum with red bands and skull decal',
+        'metal-green': 'lime hazard drum with biohazard decal and waste stencil',
+        'metal-yellow': 'yellow hazard drum with toxic and radiation decals',
+        wood: 'wooden stave barrel with iron hoops and plank lid',
+      }
+      const variantNames: Record<BarrelVariant, string> = {
+        'metal-dark': 'Metal',
+        'metal-green': 'Hazard Green',
+        'metal-yellow': 'Hazard Yellow',
+        wood: 'Wood',
+      }
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? `Using imported ${variantNames[this.barrelVariant]} barrel GLB.`
+          : `Procedural v2 — ${variantLabels[this.barrelVariant]}.`
+      return
+    }
+
+    if (this.asset === 'crate') {
+      const result = await buildCrate(this.crateVariant)
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      const variantLabels: Record<CrateVariant, string> = {
+        small: 'compact cube with rope handle',
+        medium: 'standard shipping cube with stencil codes',
+        large: 'reinforced crate with diagonal brace and side-up marking',
+        long: 'low rifle-style ammo box',
+        flat: 'wide pallet crate with recessed lid and skids',
+      }
+      const variantNames: Record<CrateVariant, string> = {
+        small: 'Small',
+        medium: 'Medium',
+        large: 'Large',
+        long: 'Long',
+        flat: 'Flat',
+      }
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? `Using imported ${variantNames[this.crateVariant]} crate GLB.`
+          : `Procedural v3 — brown wood ${variantLabels[this.crateVariant]}.`
+      return
+    }
+
+    if (this.asset === 'pallet') {
+      const result = await buildPallet(this.palletVariant)
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      const variantLabels: Record<PalletVariant, string> = {
+        standard: 'EUR-style wood pallet with deck boards, runners, and nail heads',
+        double: 'two weathered wood pallets stacked with a slight offset',
+        plastic: 'blue industrial plastic pallet with lattice ribs',
+      }
+      const variantNames: Record<PalletVariant, string> = {
+        standard: 'Wood',
+        double: 'Stacked',
+        plastic: 'Plastic',
+      }
+      this.statusEl.textContent =
+        result.source === 'glb'
+          ? `Using imported ${variantNames[this.palletVariant]} pallet GLB.`
+          : `Procedural v1 — ${variantLabels[this.palletVariant]}.`
+      return
+    }
+
+    if (this.asset === 'weapon') {
+      try {
+        if (this.weaponPicker.startsWith('imported:')) {
+          const id = this.weaponPicker.slice('imported:'.length) as ImportedWeaponId
+          const weapon = IMPORTED_WEAPONS.find((w) => w.id === id)
+          const result = await buildImportedWeapon(id)
+          this.studio.setAsset(result.group, 'weapon')
+          this.sourceEl.textContent = 'Source: Imported GLB'
+          this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+          this.statusEl.textContent = `${weapon?.label ?? id} — rotate and review on iPad.`
+          this.hintEl.innerHTML = `Drag to rotate · Turntable auto-spin · File<br><code>${weapon?.path ?? ''}</code>`
+        } else {
+          const index = Number(this.weaponPicker.slice('cod:'.length))
+          const result = await buildCodGhostsWeapon(index)
+          this.studio.setAsset(result.group, 'weapon')
+          this.sourceEl.textContent = 'Source: COD Ghosts GLB pack'
+          this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+          this.statusEl.textContent = `${COD_WEAPON_LABELS[index]} — COD Ghosts pack. Rotate and review on iPad.`
+          this.hintEl.innerHTML = `Drag to rotate · Turntable auto-spin · Pack file<br><code>${COD_GHOSTS_WEAPONS_GLB}</code>`
+        }
+      } catch {
+        const result = await buildWeapon(this.weaponVariant)
+        this.studio.setAsset(result.group, 'weapon')
+        this.sourceEl.textContent = `Source: ${result.source === 'glb' ? 'GLB model' : 'Procedural'}`
+        this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+        this.statusEl.textContent = 'Procedural fallback — check GLB paths in public/assets/weapons/'
+      }
+      return
+    }
+
+    if (this.asset === 'operator') {
+      const result = await buildFederationOperator()
+      this.studio.setAsset(result.group, 'prop')
+      this.sourceEl.textContent = 'Source: Federation operator GLB'
+      this.trisEl.textContent = `Tris: ${result.triangleCount.toLocaleString()}`
+      this.statusEl.textContent = 'Federation operator skin — check proportions, gear, and silhouette on iPad.'
+      this.hintEl.innerHTML = `Drag to rotate · Turntable auto-spin · File<br><code>${FEDERATION_OPERATOR_GLB}</code>`
+    }
+  }
+
+  private loop = (): void => {
+    requestAnimationFrame(this.loop)
+    const dt = this.clock.getDelta()
+    this.studio.update(dt)
+    this.studio.render()
+  }
+}
